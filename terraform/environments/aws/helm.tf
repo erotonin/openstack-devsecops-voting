@@ -53,8 +53,10 @@ resource "null_resource" "argocd_app" {
   depends_on = [time_sleep.wait_for_argocd]
 
   triggers = {
-    region       = var.aws_region
-    cluster_name = var.cluster_name
+    region            = var.aws_region
+    cluster_name      = var.cluster_name
+    argocd_app_hash   = filemd5("${path.module}/../../k8s/argocd-app.yaml")
+    argocd_azure_hash = filemd5("${path.module}/../../k8s/argocd-app-azure.yaml")
   }
 
   provisioner "local-exec" {
