@@ -15,10 +15,10 @@ terraform {
     }
 
     backend "s3" {
-        bucket         = "voting-app-tfstate-erotonin"
-        key            = "terraform.tfstate"
+        bucket         = "devsecops-voting-tfstate-erotonin"
+        key            = "aws/terraform.tfstate"
         region         = "us-east-1"
-        dynamodb_table = "voting-app-terraform-locks"
+        dynamodb_table = "devsecops-voting-terraform-locks"
         encrypt        = true
     }
 }

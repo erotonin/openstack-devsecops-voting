@@ -38,8 +38,8 @@ jobs:
       uses: sonarsource/sonarqube-scan-action@master
       with:
         args: >
-          -Dsonar.projectKey=DevSecOps-Voting-App
-          -Dsonar.projectName=DevSecOps-Voting-App
+          -Dsonar.projectKey=devsecops-voting
+          -Dsonar.projectName=devsecops-voting
           -Dsonar.sources=vote,result
           -Dsonar.exclusions=**/node_modules/**,**/views/**
           -Dsonar.c.file.suffixes=-

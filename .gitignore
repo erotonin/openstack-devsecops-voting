@@ -3,7 +3,6 @@
 *.tfstate
 *.tfstate.backup
 *.tfvars
-.terraform.lock.hcl
 
 # Python (cho dịch vụ vote)
 **/__pycache__/
@@ -50,7 +49,3 @@ dependency-check-report.html
 dependency-check-report.xml
 
 docs/
-
-# AI mentor scaffolding (local-only)
-.github/copilot-instructions.md
-STATE.md
