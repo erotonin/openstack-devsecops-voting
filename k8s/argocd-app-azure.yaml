@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: devsecops-voting-app-azure
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/erotonin/devsecops-voting.git' # Repo của em
+    targetRevision: HEAD
+    path: k8s
+    helm:
+      valueFiles:
+        - values-dev.yaml
+  destination:
+    name: devsecops-voting-aks # Chỉ mặt gọi tên cụm Azure (Spoke)
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
