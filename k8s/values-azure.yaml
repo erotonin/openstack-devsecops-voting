@@ -1,3 +1,4 @@
+replicaCount: 1
 images:
   vote:
     repository: devsecopsvotingacrk1nhkh.azurecr.io/voting-app-vote
@@ -8,3 +9,13 @@ images:
   worker:
     repository: devsecopsvotingacrk1nhkh.azurecr.io/voting-app-worker
     tag: 58e0799642ca1a3f1f7a904076b58d00c4738974
+  redis:
+    repository: redis
+    tag: 7-alpine
+  db:
+    repository: postgres
+    tag: 15-alpine
+postgres:
+  user: postgres
+  password: password
+  db: postgres

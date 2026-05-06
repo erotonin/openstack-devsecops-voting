@@ -69,7 +69,8 @@ resource "null_resource" "argocd_app" {
     when    = destroy
     command = <<EOT
       aws eks update-kubeconfig --region ${self.triggers.region} --name ${self.triggers.cluster_name}
-      kubectl delete -f ../k8s/argocd-app.yaml --ignore-not-found=true
+      kubectl delete -f ../../k8s/argocd-app.yaml --ignore-not-found=true
+      kubectl delete -f ../../k8s/argocd-app-azure.yaml --ignore-not-found=true
       sleep 20
     EOT
   }
