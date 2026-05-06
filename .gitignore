@@ -50,3 +50,7 @@ dependency-check-report.html
 dependency-check-report.xml
 
 docs/
+
+# AI mentor scaffolding (local-only)
+.github/copilot-instructions.md
+STATE.md
