@@ -1,10 +1,10 @@
 images:
   vote:
     repository: devsecopsvotingacrk1nhkh.azurecr.io/voting-app-vote
-    tag: 8827144d8b697c4b8fdff097cc20eafb5c835d29
+    tag: 58e0799642ca1a3f1f7a904076b58d00c4738974
   result:
     repository: devsecopsvotingacrk1nhkh.azurecr.io/voting-app-result
-    tag: 8827144d8b697c4b8fdff097cc20eafb5c835d29
+    tag: 58e0799642ca1a3f1f7a904076b58d00c4738974
   worker:
     repository: devsecopsvotingacrk1nhkh.azurecr.io/voting-app-worker
-    tag: 8827144d8b697c4b8fdff097cc20eafb5c835d29
+    tag: 58e0799642ca1a3f1f7a904076b58d00c4738974
