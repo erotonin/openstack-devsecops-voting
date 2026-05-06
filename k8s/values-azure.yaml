@@ -1,0 +1,10 @@
+images:
+  vote:
+    repository: devsecopsvotingacrk1nhkh.azurecr.io/voting-app-vote
+    tag: latest
+  result:
+    repository: devsecopsvotingacrk1nhkh.azurecr.io/voting-app-result
+    tag: latest
+  worker:
+    repository: devsecopsvotingacrk1nhkh.azurecr.io/voting-app-worker
+    tag: latest

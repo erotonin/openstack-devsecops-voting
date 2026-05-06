@@ -60,7 +60,8 @@ resource "null_resource" "argocd_app" {
   provisioner "local-exec" {
     command = <<EOT
       aws eks update-kubeconfig --region ${var.aws_region} --name ${var.cluster_name}
-      kubectl apply -f ../k8s/argocd-app.yaml
+      kubectl apply -f ../../k8s/argocd-app.yaml
+      kubectl apply -f ../../k8s/argocd-app-azure.yaml
     EOT
   }
 

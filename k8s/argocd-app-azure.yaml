@@ -13,7 +13,7 @@ spec:
     path: k8s
     helm:
       valueFiles:
-        - values-dev.yaml
+        - values-azure.yaml
   destination:
     name: devsecops-voting-aks # Chỉ mặt gọi tên cụm Azure (Spoke)
     namespace: default

@@ -78,6 +78,14 @@ jobs:
     - name: Login to Amazon ECR
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+    - name: Login to Azure ACR
+      run: az acr login --name devsecopsvotingacrk1nhkh
     - name: Build VOTE
       run: docker build -t voting-app-vote:${{ github.sha }} ./vote
     - name: Scan VOTE with Trivy
@@ -119,6 +127,17 @@ jobs:
         docker push $ECR_REGISTRY/voting-app-result:$IMAGE_TAG
         docker tag voting-app-worker:$IMAGE_TAG $ECR_REGISTRY/voting-app-worker:$IMAGE_TAG
         docker push $ECR_REGISTRY/voting-app-worker:$IMAGE_TAG
+    - name: Push to ACR
+      env:
+        ACR_REGISTRY: devsecopsvotingacrk1nhkh.azurecr.io
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        docker tag voting-app-vote:$IMAGE_TAG $ACR_REGISTRY/voting-app-vote:$IMAGE_TAG
+        docker push $ACR_REGISTRY/voting-app-vote:$IMAGE_TAG
+        docker tag voting-app-result:$IMAGE_TAG $ACR_REGISTRY/voting-app-result:$IMAGE_TAG
+        docker push $ACR_REGISTRY/voting-app-result:$IMAGE_TAG
+        docker tag voting-app-worker:$IMAGE_TAG $ACR_REGISTRY/voting-app-worker:$IMAGE_TAG
+        docker push $ACR_REGISTRY/voting-app-worker:$IMAGE_TAG
     - name: Update Helm values
       run: |
         yq e -i '.images.vote.tag = "${{ github.sha }}"' k8s/values-dev.yaml
@@ -127,8 +146,11 @@ jobs:
         yq e -i '.images.vote.tag = "${{ github.sha }}"' k8s/values-prod.yaml
         yq e -i '.images.result.tag = "${{ github.sha }}"' k8s/values-prod.yaml
         yq e -i '.images.worker.tag = "${{ github.sha }}"' k8s/values-prod.yaml
+        yq e -i '.images.vote.tag = "${{ github.sha }}"' k8s/values-azure.yaml
+        yq e -i '.images.result.tag = "${{ github.sha }}"' k8s/values-azure.yaml
+        yq e -i '.images.worker.tag = "${{ github.sha }}"' k8s/values-azure.yaml
         git config user.name "erotonin"
         git config user.email "erotonin@users.noreply.github.com"
-        git add k8s/values-dev.yaml k8s/values-prod.yaml
-        git commit -m "Update image tags to ${{ github.sha }} for Dev & Prod"
+        git add k8s/values-dev.yaml k8s/values-prod.yaml k8s/values-azure.yaml
+        git commit -m "Update image tags to ${{ github.sha }} for Dev, Prod & Azure"
         git push

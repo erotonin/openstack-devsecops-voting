@@ -1,12 +1,9 @@
-# Cái này em sẽ tự gõ lúc chạy lệnh
-variable "azure_vpn_ip" {
-  description = "Địa chỉ IP của Azure VPN"
-}
+# Không cần nhập tay nữa, sẽ tự động đọc từ Azure State
 
 # Khai báo sự tồn tại của Azure cho AWS biết
 resource "aws_customer_gateway" "cgw" {
   bgp_asn    = 65000
-  ip_address = var.azure_vpn_ip
+  ip_address = data.terraform_remote_state.azure.outputs.azure_vpn_public_ip
   type       = "ipsec.1"
 }
 

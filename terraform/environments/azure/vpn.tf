@@ -35,13 +35,14 @@ resource "azurerm_virtual_network_gateway" "vng" {
 output "azure_vpn_public_ip" {
   value = azurerm_public_ip.vpn_ip.ip_address
 }
-variable "aws_tunnel_ip" {
-  description = "Địa chỉ IP Tunnel 1 của AWS"
-}
-
-variable "aws_preshared_key" {
-  description = "Mật khẩu dùng chung giữa 2 đám mây"
-  sensitive   = true
+# Tự động đọc dữ liệu từ AWS State
+data "terraform_remote_state" "aws" {
+  backend = "s3"
+  config = {
+    bucket = "devsecops-voting-tfstate-erotonin"
+    key    = "aws/terraform.tfstate"
+    region = "us-east-1"
+  }
 }
 
 # Khai báo sự tồn tại của AWS (Local Network Gateway)
@@ -49,7 +50,8 @@ resource "azurerm_local_network_gateway" "lng" {
   name                = "lng-aws"
   resource_group_name = module.azure_networking.rg_name
   location            = var.location
-  gateway_address     = var.aws_tunnel_ip
+  # Thêm hàm try() để tránh lỗi khi huỷ cụm AWS mà vẫn chạy Azure plan
+  gateway_address     = try(data.terraform_remote_state.aws.outputs.aws_tunnel1_ip, "1.1.1.1")
   address_space       = ["10.0.0.0/16"] # Dải IP của mạng AWS
 }
 
@@ -63,5 +65,5 @@ resource "azurerm_virtual_network_gateway_connection" "vpn_conn" {
   virtual_network_gateway_id = azurerm_virtual_network_gateway.vng.id
   local_network_gateway_id   = azurerm_local_network_gateway.lng.id
 
-  shared_key = var.aws_preshared_key
+  shared_key = try(data.terraform_remote_state.aws.outputs.aws_tunnel1_preshared_key, "dummy_key")
 }
