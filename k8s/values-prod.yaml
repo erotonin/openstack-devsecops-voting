@@ -4,13 +4,13 @@ service:
 images:
   vote:
     repository: 800557027783.dkr.ecr.us-east-1.amazonaws.com/voting-app-vote
-    tag: ce4b27645ec546d9cd82b03ade81f66c3885b917
+    tag: f2e8604c9ac4a7e3c708ae1d16682cc4b9db2994
   result:
     repository: 800557027783.dkr.ecr.us-east-1.amazonaws.com/voting-app-result
-    tag: ce4b27645ec546d9cd82b03ade81f66c3885b917
+    tag: f2e8604c9ac4a7e3c708ae1d16682cc4b9db2994
   worker:
     repository: 800557027783.dkr.ecr.us-east-1.amazonaws.com/voting-app-worker
-    tag: ce4b27645ec546d9cd82b03ade81f66c3885b917
+    tag: f2e8604c9ac4a7e3c708ae1d16682cc4b9db2994
   redis:
     repository: redis
     tag: 7-alpine
