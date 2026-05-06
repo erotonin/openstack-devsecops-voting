@@ -16,5 +16,5 @@ WORKDIR /app
 COPY --from=build /install/deps /usr/local
 COPY . .
 USER appuser
-EXPOSE 80
-CMD ["gunicorn", "app:app", "-b", "0.0.0.0:80", "--log-file", "-", "--access-logfile", "-", "--workers", "4", "--keep-alive", "0"]
+EXPOSE 8080
+CMD ["gunicorn", "app:app", "-b", "0.0.0.0:8080", "--log-file", "-", "--access-logfile", "-", "--workers", "4", "--keep-alive", "0"]

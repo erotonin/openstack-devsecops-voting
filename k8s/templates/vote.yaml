@@ -16,7 +16,7 @@ spec:
       - name: vote
         image: {{ .Values.images.vote.repository }}:{{ .Values.images.vote.tag }}
         ports:
-        - containerPort: 80
+        - containerPort: 8080
           name: vote
 ---
 apiVersion: v1
@@ -27,6 +27,6 @@ spec:
   type: {{ .Values.service.type | default "LoadBalancer" }}
   ports:
   - port: 80
-    targetPort: 80
+    targetPort: 8080
   selector:
     app: vote
