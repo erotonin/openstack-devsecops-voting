@@ -1,4 +1,6 @@
 replicaCount: 1
+service:
+  type: NodePort
 images:
   vote:
     repository: devsecopsvotingacrk1nhkh.azurecr.io/voting-app-vote

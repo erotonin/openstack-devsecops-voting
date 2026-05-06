@@ -24,7 +24,7 @@ kind: Service
 metadata:
   name: vote
 spec:
-  type: LoadBalancer
+  type: {{ .Values.service.type | default "LoadBalancer" }}
   ports:
   - port: 80
     targetPort: 80

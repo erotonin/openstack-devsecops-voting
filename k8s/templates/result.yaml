@@ -24,7 +24,7 @@ kind: Service
 metadata:
   name: result
 spec:
-  type: LoadBalancer
+  type: {{ .Values.service.type | default "LoadBalancer" }}
   ports:
   - port: 80
     targetPort: 4000
