@@ -1,3 +1,10 @@
 # Ignore vendored setuptools vulnerabilities (False positives/Unactionable)
 CVE-2026-23949
 CVE-2026-24049
+
+# Ignore base OS OpenSSL vulnerabilities in distroless image until Google provides a patch
+CVE-2026-31789
+CVE-2026-28387
+CVE-2026-28388
+CVE-2026-28389
+CVE-2026-28390
