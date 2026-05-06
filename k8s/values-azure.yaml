@@ -1,10 +1,10 @@
 images:
   vote:
     repository: devsecopsvotingacrk1nhkh.azurecr.io/voting-app-vote
-    tag: latest
+    tag: 8827144d8b697c4b8fdff097cc20eafb5c835d29
   result:
     repository: devsecopsvotingacrk1nhkh.azurecr.io/voting-app-result
-    tag: latest
+    tag: 8827144d8b697c4b8fdff097cc20eafb5c835d29
   worker:
     repository: devsecopsvotingacrk1nhkh.azurecr.io/voting-app-worker
-    tag: latest
+    tag: 8827144d8b697c4b8fdff097cc20eafb5c835d29
