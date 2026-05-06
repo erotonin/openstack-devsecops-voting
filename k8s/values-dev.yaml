@@ -1,5 +1,7 @@
 
 replicaCount: 1
+service:
+  type: LoadBalancer
 images:
   vote:
     repository: 800557027783.dkr.ecr.us-east-1.amazonaws.com/voting-app-vote
