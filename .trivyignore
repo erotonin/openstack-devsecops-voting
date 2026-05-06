@@ -1,0 +1,3 @@
+# Ignore vendored setuptools vulnerabilities (False positives/Unactionable)
+CVE-2026-23949
+CVE-2026-24049
