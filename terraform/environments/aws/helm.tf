@@ -159,6 +159,12 @@ resource "helm_release" "kube_prometheus_stack" {
       defaultRules = {
         create = false
       }
+      kubeStateMetrics = {
+        enabled = false
+      }
+      nodeExporter = {
+        enabled = false
+      }
       grafana = {
         service = {
           type = "ClusterIP"
@@ -223,6 +229,15 @@ resource "helm_release" "loki" {
   values = [
     yamlencode({
       deploymentMode = "SingleBinary"
+      chunksCache = {
+        enabled = false
+      }
+      resultsCache = {
+        enabled = false
+      }
+      lokiCanary = {
+        enabled = false
+      }
       loki = {
         auth_enabled  = false
         useTestSchema = true
@@ -235,6 +250,9 @@ resource "helm_release" "loki" {
       }
       singleBinary = {
         replicas = 1
+        persistence = {
+          enabled = false
+        }
       }
       read = {
         replicas = 0
