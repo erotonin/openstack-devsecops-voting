@@ -1,156 +1,214 @@
-name: CI/CD Pipeline
+name: DevSecOps CI/CD
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
-    branches: [ "main" ]
-    paths-ignore:
-      - 'k8s/values-*.yaml'
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      promote_production:
+        description: "Promote the already-built main commit to production"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
 
 permissions:
+  contents: read
   id-token: write
-  contents: write
+  security-events: write
+  actions: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
+  IMAGE_TAG: ${{ github.sha }}
 
 jobs:
-  owasp-scan:
+  pr-security:
+    name: PR security gates
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    - name: OWASP Dependency Check
-      uses: dependency-check/Dependency-Check_Action@main
-      with:
-        project: 'DevSecOps-Voting-App'
-        path: '.'
-        format: 'HTML'
-        args: >
-          --failOnCVSS 7
-          --enableRetired
-          --suppression suppression.xml
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  sonarqube-scan:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-    - name: SonarQube Scan
-      uses: sonarsource/sonarqube-scan-action@master
-      with:
-        args: >
-          -Dsonar.projectKey=devsecops-voting
-          -Dsonar.projectName=devsecops-voting
-          -Dsonar.sources=vote,result
-          -Dsonar.exclusions=**/node_modules/**,**/views/**
-          -Dsonar.c.file.suffixes=-
-          -Dsonar.cpp.file.suffixes=-
-          -Dsonar.objc.file.suffixes=-
-          -Dsonar.python.version=3.11
-      env:
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-    - name: Setup .NET SDK
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: '7.0.x'
-    - name: Install SonarScanner for .NET
-      run: dotnet tool install --global dotnet-sonarscanner
-    - name: SonarQube Scan (Worker / C#)
-      env:
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-      run: |
-        dotnet sonarscanner begin /k:"Worker-App" /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
-        dotnet build ./worker/Worker.csproj
-        dotnet sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+      - name: Gitleaks secret scan
+        uses: gitleaks/gitleaks-action@v2
 
-  build-and-push:
+      - name: Semgrep SAST
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: auto
+
+      - name: Checkov IaC scan
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: .
+          framework: terraform,kubernetes,dockerfile,github_actions
+          quiet: true
+
+      - name: tfsec Terraform scan
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          working_directory: terraform
+
+      - name: Trivy filesystem dependency scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Helm template validation
+        run: |
+          helm lint k8s
+          helm template voting-app k8s -f k8s/values-prod.yaml >/tmp/voting-prod.yaml
+
+      - name: Install Conftest
+        run: |
+          wget -q https://github.com/open-policy-agent/conftest/releases/download/v0.56.0/conftest_0.56.0_Linux_x86_64.tar.gz
+          tar xzf conftest_0.56.0_Linux_x86_64.tar.gz
+          sudo mv conftest /usr/local/bin/conftest
+
+      - name: Conftest Kubernetes policy scan
+        run: |
+          helm template voting-app k8s -f k8s/values-prod.yaml > /tmp/voting-prod.yaml
+          conftest test --policy policies/conftest /tmp/voting-prod.yaml
+
+  build-scan-sign:
+    name: Build signed staging artifact
     runs-on: ubuntu-latest
-    needs: [owasp-scan, sonarqube-scan]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - vote
+          - result
+          - worker
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-        aws-region: us-east-1
-    - name: Login to Amazon ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v2
-    - name: Azure Login
-      uses: azure/login@v1
-      with:
-        client-id: ${{ secrets.AZURE_CLIENT_ID }}
-        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-    - name: Login to Azure ACR
-      run: az acr login --name devsecopsvotingacrk1nhkh
-    - name: Build VOTE
-      run: docker build -t voting-app-vote:${{ github.sha }} ./vote
-    - name: Scan VOTE with Trivy
-      uses: aquasecurity/trivy-action@master
-      with:
-        image-ref: 'voting-app-vote:${{ github.sha }}'
-        format: 'table'
-        exit-code: '1'
-        severity: 'CRITICAL,HIGH'
-        ignore-unfixed: true
-    - name: Build RESULT
-      run: docker build -t voting-app-result:${{ github.sha }} ./result
-    - name: Scan RESULT with Trivy
-      uses: aquasecurity/trivy-action@master
-      with:
-        image-ref: 'voting-app-result:${{ github.sha }}'
-        format: 'table'
-        exit-code: '1'
-        severity: 'CRITICAL,HIGH'
-        ignore-unfixed: true
-    - name: Build WORKER
-      run: docker build -t voting-app-worker:${{ github.sha }} ./worker
-    - name: Scan WORKER with Trivy
-      uses: aquasecurity/trivy-action@master
-      with:
-        image-ref: 'voting-app-worker:${{ github.sha }}'
-        format: 'table'
-        exit-code: '1'
-        ignore-unfixed: true
-        severity: 'CRITICAL,HIGH'
-    - name: Push to ECR
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        IMAGE_TAG: ${{ github.sha }}
-      run: |
-        docker tag voting-app-vote:$IMAGE_TAG $ECR_REGISTRY/voting-app-vote:$IMAGE_TAG
-        docker push $ECR_REGISTRY/voting-app-vote:$IMAGE_TAG
-        docker tag voting-app-result:$IMAGE_TAG $ECR_REGISTRY/voting-app-result:$IMAGE_TAG
-        docker push $ECR_REGISTRY/voting-app-result:$IMAGE_TAG
-        docker tag voting-app-worker:$IMAGE_TAG $ECR_REGISTRY/voting-app-worker:$IMAGE_TAG
-        docker push $ECR_REGISTRY/voting-app-worker:$IMAGE_TAG
-    - name: Push to ACR
-      env:
-        ACR_REGISTRY: devsecopsvotingacrk1nhkh.azurecr.io
-        IMAGE_TAG: ${{ github.sha }}
-      run: |
-        docker tag voting-app-vote:$IMAGE_TAG $ACR_REGISTRY/voting-app-vote:$IMAGE_TAG
-        docker push $ACR_REGISTRY/voting-app-vote:$IMAGE_TAG
-        docker tag voting-app-result:$IMAGE_TAG $ACR_REGISTRY/voting-app-result:$IMAGE_TAG
-        docker push $ACR_REGISTRY/voting-app-result:$IMAGE_TAG
-        docker tag voting-app-worker:$IMAGE_TAG $ACR_REGISTRY/voting-app-worker:$IMAGE_TAG
-        docker push $ACR_REGISTRY/voting-app-worker:$IMAGE_TAG
-    - name: Update Helm values
-      run: |
-        yq e -i '.images.vote.tag = "${{ github.sha }}"' k8s/values-dev.yaml
-        yq e -i '.images.result.tag = "${{ github.sha }}"' k8s/values-dev.yaml
-        yq e -i '.images.worker.tag = "${{ github.sha }}"' k8s/values-dev.yaml
-        yq e -i '.images.vote.tag = "${{ github.sha }}"' k8s/values-prod.yaml
-        yq e -i '.images.result.tag = "${{ github.sha }}"' k8s/values-prod.yaml
-        yq e -i '.images.worker.tag = "${{ github.sha }}"' k8s/values-prod.yaml
-        yq e -i '.images.vote.tag = "${{ github.sha }}"' k8s/values-azure.yaml
-        yq e -i '.images.result.tag = "${{ github.sha }}"' k8s/values-azure.yaml
-        yq e -i '.images.worker.tag = "${{ github.sha }}"' k8s/values-azure.yaml
-        git config user.name "erotonin"
-        git config user.email "erotonin@users.noreply.github.com"
-        git add k8s/values-dev.yaml k8s/values-prod.yaml k8s/values-azure.yaml
-        git commit -m "Update image tags to ${{ github.sha }} for Dev, Prod & Azure"
-        git push
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Azure login with OIDC
+        if: env.ACR_LOGIN_SERVER != ''
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Login to Azure ACR
+        if: env.ACR_LOGIN_SERVER != ''
+        run: az acr login --name "${ACR_LOGIN_SERVER%%.azurecr.io}"
+
+      - name: Build image
+        run: |
+          docker build \
+            -t "${{ matrix.service }}:${IMAGE_TAG}" \
+            "./${{ matrix.service }}"
+
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ matrix.service }}:${{ env.IMAGE_TAG }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Tag image for ECR
+        env:
+          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          docker tag "${{ matrix.service }}:${IMAGE_TAG}" "${ECR_REGISTRY}/voting-app-${{ matrix.service }}:${IMAGE_TAG}"
+          docker tag "${{ matrix.service }}:${IMAGE_TAG}" "${ECR_REGISTRY}/voting-app-${{ matrix.service }}:main"
+
+      - name: Tag image for ACR
+        if: env.ACR_LOGIN_SERVER != ''
+        run: |
+          docker tag "${{ matrix.service }}:${IMAGE_TAG}" "${ACR_LOGIN_SERVER}/voting-app-${{ matrix.service }}:${IMAGE_TAG}"
+          docker tag "${{ matrix.service }}:${IMAGE_TAG}" "${ACR_LOGIN_SERVER}/voting-app-${{ matrix.service }}:main"
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ matrix.service }}:${{ env.IMAGE_TAG }}
+          format: spdx-json
+          output-file: sbom-${{ matrix.service }}.spdx.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ matrix.service }}
+          path: sbom-${{ matrix.service }}.spdx.json
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Push ECR image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          docker push "${ECR_REGISTRY}/voting-app-${{ matrix.service }}:${IMAGE_TAG}"
+          docker push "${ECR_REGISTRY}/voting-app-${{ matrix.service }}:main"
+
+      - name: Push ACR image
+        if: env.ACR_LOGIN_SERVER != ''
+        run: |
+          docker push "${ACR_LOGIN_SERVER}/voting-app-${{ matrix.service }}:${IMAGE_TAG}"
+          docker push "${ACR_LOGIN_SERVER}/voting-app-${{ matrix.service }}:main"
+
+      - name: Cosign sign ECR image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: cosign sign --yes "${ECR_REGISTRY}/voting-app-${{ matrix.service }}:${IMAGE_TAG}"
+
+      - name: Cosign sign ACR image
+        if: env.ACR_LOGIN_SERVER != ''
+        run: cosign sign --yes "${ACR_LOGIN_SERVER}/voting-app-${{ matrix.service }}:${IMAGE_TAG}"
+
+  dast-staging:
+    name: DAST staging
+    runs-on: ubuntu-latest
+    needs: build-scan-sign
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.STAGING_URL != ''
+    steps:
+      - name: OWASP ZAP baseline
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: ${{ vars.STAGING_URL }}
+          fail_action: true
+          allow_issue_writing: false
+          artifact_name: zap-staging-report
+
+  production-approval:
+    name: Production approval gate
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.promote_production == 'true'
+    environment:
+      name: production
+    steps:
+      - name: Approved production promotion
+        run: |
+          echo "Production promotion approved for commit ${GITHUB_SHA}."
+          echo "This job is the human approval boundary."
+          echo "Production should promote a previously signed image digest, not rebuild or deploy from a direct main push."
+          echo "ArgoCD production sync is intentionally performed by GitOps, not by committing from CI."

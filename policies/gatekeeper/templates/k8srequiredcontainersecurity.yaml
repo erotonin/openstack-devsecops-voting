@@ -1,0 +1,31 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8srequiredcontainersecurity
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRequiredContainerSecurity
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8srequiredcontainersecurity
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.template.spec.containers[_]
+          container.securityContext.privileged == true
+          msg := sprintf("container %s must not be privileged", [container.name])
+        }
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.template.spec.containers[_]
+          not container.securityContext.allowPrivilegeEscalation == false
+          msg := sprintf("container %s must set allowPrivilegeEscalation=false", [container.name])
+        }
+
+        violation[{"msg": msg}] {
+          not input.review.object.spec.template.spec.securityContext.runAsNonRoot
+          msg := "pod must set securityContext.runAsNonRoot=true"
+        }
+

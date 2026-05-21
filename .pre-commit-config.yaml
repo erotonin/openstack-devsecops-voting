@@ -1,0 +1,53 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-added-large-files
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.24.0
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/bridgecrewio/checkov
+    rev: 3.2.361
+    hooks:
+      - id: checkov
+        args:
+          - --quiet
+          - --framework
+          - terraform,kubernetes,dockerfile,github_actions
+
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.96.3
+    hooks:
+      - id: terraform_fmt
+      - id: terraform_validate
+      - id: terraform_tflint
+        args:
+          - --args=--disable-rule=terraform_required_version
+
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.13.1-beta
+    hooks:
+      - id: hadolint-docker
+
+  - repo: https://github.com/adrienverge/yamllint.git
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        args:
+          - -d
+          - relaxed
+
+  - repo: https://github.com/semgrep/pre-commit
+    rev: v1.97.0
+    hooks:
+      - id: semgrep
+        args:
+          - --config=auto
+          - --error
+
