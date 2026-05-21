@@ -37,6 +37,27 @@ function Invoke-Native {
     }
 }
 
+function Get-TerraformOutputRaw {
+    param(
+        [string]$Name,
+        [string]$Default = ""
+    )
+
+    $previousPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        $value = terraform output -raw $Name 2>$null
+        if ($LASTEXITCODE -ne 0 -or -not $value) {
+            return $Default
+        }
+        return $value
+    } catch {
+        return $Default
+    } finally {
+        $ErrorActionPreference = $previousPreference
+    }
+}
+
 function Invoke-TerraformApply {
     param(
         [string]$Path,
@@ -122,9 +143,11 @@ function Update-EksKubeconfig {
 
     Push-Location $Path
     try {
-        $awsRegion = terraform output -raw aws_region 2>$null
-        if (-not $awsRegion) { $awsRegion = "us-east-1" }
-        $eksCluster = terraform output -raw cluster_name
+        $awsRegion = Get-TerraformOutputRaw -Name "aws_region" -Default "us-east-1"
+        $eksCluster = Get-TerraformOutputRaw -Name "cluster_name"
+        if (-not $eksCluster) {
+            throw "Missing Terraform output: cluster_name"
+        }
         Invoke-Native { aws eks update-kubeconfig --region $awsRegion --name $eksCluster } "Failed to update EKS kubeconfig"
     } finally {
         Pop-Location
@@ -138,8 +161,8 @@ function Update-AksKubeconfig {
 
     Push-Location $Path
     try {
-        $rgName = terraform output -raw resource_group_name 2>$null
-        $aksName = terraform output -raw aks_cluster_name 2>$null
+        $rgName = Get-TerraformOutputRaw -Name "resource_group_name"
+        $aksName = Get-TerraformOutputRaw -Name "aks_cluster_name"
         if ($rgName -and $aksName) {
             Invoke-Native { az aks get-credentials --resource-group $rgName --name $aksName --overwrite-existing } "Failed to update AKS kubeconfig"
         }
