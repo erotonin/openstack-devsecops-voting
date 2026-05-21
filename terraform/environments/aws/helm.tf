@@ -159,10 +159,18 @@ resource "helm_release" "kube_prometheus_stack" {
         service = {
           type = "ClusterIP"
         }
+        sidecar = {
+          dashboards = {
+            enabled = true
+            label   = "grafana_dashboard"
+          }
+        }
       }
       prometheus = {
         prometheusSpec = {
-          retention = "15d"
+          retention                               = "15d"
+          serviceMonitorSelectorNilUsesHelmValues = false
+          ruleSelectorNilUsesHelmValues           = false
         }
       }
       alertmanager = {
@@ -174,6 +182,24 @@ resource "helm_release" "kube_prometheus_stack" {
   ]
 
   depends_on = [module.eks]
+}
+
+resource "kubernetes_config_map" "grafana_voting_slo_dashboard" {
+  count = var.enable_observability ? 1 : 0
+
+  metadata {
+    name      = "grafana-voting-slo-dashboard"
+    namespace = "monitoring"
+    labels = {
+      grafana_dashboard = "1"
+    }
+  }
+
+  data = {
+    "voting-slo.json" = file("${path.module}/../../../observability/grafana-dashboards/voting-slo.json")
+  }
+
+  depends_on = [helm_release.kube_prometheus_stack]
 }
 
 resource "helm_release" "loki" {

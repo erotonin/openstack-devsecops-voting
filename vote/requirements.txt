@@ -1,5 +1,6 @@
 Flask
 Redis
 gunicorn
+prometheus_client
 jaraco.context>=6.1.0
 wheel>=0.46.2

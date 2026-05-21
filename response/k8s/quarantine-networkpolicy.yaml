@@ -1,0 +1,12 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: quarantine-deny-egress
+  namespace: voting
+spec:
+  podSelector:
+    matchLabels:
+      security.devsecops/quarantine: "true"
+  policyTypes:
+  - Egress
+  egress: []

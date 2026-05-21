@@ -47,6 +47,14 @@ externalSecret:
   storeName: aws-secrets-manager
   remoteKey: devsecops-voting/app-runtime
 
+monitoring:
+  enabled: true
+  prometheusRelease: kube-prometheus-stack
+  slo:
+    successRateTarget: 0.99
+    p95LatencySeconds: 0.5
+    alertFor: 1m
+
 resources:
   vote:
     requests:

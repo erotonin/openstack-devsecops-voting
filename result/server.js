@@ -2,12 +2,26 @@ var express = require('express'),
     async = require('async'),
     path = require('path'),
     { Pool } = require('pg'),
+    client = require('prom-client'),
     cookieParser = require('cookie-parser'),
     app = express(),
     server = require('http').Server(app),
     io = require('socket.io')(server);
 
 var port = process.env.PORT || 4000;
+
+client.collectDefaultMetrics({ prefix: 'result_' });
+const httpRequestDuration = new client.Histogram({
+  name: 'result_http_request_duration_seconds',
+  help: 'HTTP request latency for the result service',
+  labelNames: ['method', 'route', 'status'],
+  buckets: [0.05, 0.1, 0.25, 0.5, 1, 2, 5]
+});
+const httpRequests = new client.Counter({
+  name: 'result_http_requests_total',
+  help: 'Total HTTP requests handled by the result service',
+  labelNames: ['method', 'route', 'status']
+});
 
 io.on('connection', function (socket) {
 
@@ -66,11 +80,30 @@ function collectVotesFromResult(result) {
 }
 
 app.use(cookieParser());
+app.use(function (req, res, next) {
+  if (req.path === '/metrics') {
+    return next();
+  }
+
+  const endTimer = httpRequestDuration.startTimer();
+  res.on('finish', function () {
+    const route = req.route && req.route.path ? req.route.path : req.path;
+    const labels = { method: req.method, route: route, status: String(res.statusCode) };
+    endTimer(labels);
+    httpRequests.inc(labels);
+  });
+  next();
+});
 app.use(express.urlencoded({ extended: false, limit: process.env.URLENCODED_LIMIT || '10kb' }));
 app.use(express.static(__dirname + '/views'));
 
 app.get('/healthz', function (req, res) {
   res.status(200).json({ status: 'ok', service: 'result' });
+});
+
+app.get('/metrics', async function (req, res) {
+  res.set('Content-Type', client.register.contentType);
+  res.end(await client.register.metrics());
 });
 
 app.get('/', function (req, res) {

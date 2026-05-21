@@ -1,0 +1,49 @@
+{{- if .Values.monitoring.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: voting-app-slo
+  labels:
+    release: {{ .Values.monitoring.prometheusRelease | quote }}
+spec:
+  groups:
+  - name: voting-app.slo
+    rules:
+    - alert: VotingAppLowSuccessRate
+      expr: |
+        (
+          sum(rate(voting_http_requests_total{status=~"2..|3.."}[5m])) + sum(rate(result_http_requests_total{status=~"2..|3.."}[5m]))
+        )
+        /
+        (
+          sum(rate(voting_http_requests_total[5m])) + sum(rate(result_http_requests_total[5m]))
+        ) < {{ .Values.monitoring.slo.successRateTarget }}
+      for: {{ .Values.monitoring.slo.alertFor }}
+      labels:
+        severity: warning
+        slo: success-rate
+      annotations:
+        summary: Voting app success rate below SLO
+        description: HTTP success rate has dropped below the configured demo SLO.
+    - alert: VotingAppHighP95Latency
+      expr: |
+        histogram_quantile(0.95, sum(rate(voting_http_request_duration_seconds_bucket[5m])) by (le)) > {{ .Values.monitoring.slo.p95LatencySeconds }}
+        or
+        histogram_quantile(0.95, sum(rate(result_http_request_duration_seconds_bucket[5m])) by (le)) > {{ .Values.monitoring.slo.p95LatencySeconds }}
+      for: {{ .Values.monitoring.slo.alertFor }}
+      labels:
+        severity: warning
+        slo: latency
+      annotations:
+        summary: Voting app p95 latency above SLO
+        description: Vote or result service p95 latency is above the configured demo SLO.
+    - alert: VotingAppTargetDown
+      expr: up{namespace="{{ .Release.Namespace }}", service=~"vote|result"} == 0
+      for: {{ .Values.monitoring.slo.alertFor }}
+      labels:
+        severity: critical
+        slo: availability
+      annotations:
+        summary: Voting app scrape target is down
+        description: Prometheus cannot scrape one of the voting app HTTP targets.
+{{- end }}

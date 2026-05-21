@@ -1,0 +1,20 @@
+{{- if .Values.monitoring.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: voting-app
+  labels:
+    release: {{ .Values.monitoring.prometheusRelease | quote }}
+spec:
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 15s
+  selector:
+    matchExpressions:
+    - key: app
+      operator: In
+      values:
+      - vote
+      - result
+{{- end }}
