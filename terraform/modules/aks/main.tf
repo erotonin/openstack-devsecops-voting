@@ -38,15 +38,15 @@ resource "azurerm_kubernetes_cluster" "aks" {
   # private_cluster_enabled = true (bật khi prod, tắt cho dev cho dễ kubectl)
 
   default_node_pool {
-    name                 = "system"
-    vm_size              = var.vm_size
-    vnet_subnet_id       = var.subnet_id
+    name                = "system"
+    vm_size             = var.vm_size
+    vnet_subnet_id      = var.subnet_id
     enable_auto_scaling = true
-    min_count            = var.node_min_count
-    max_count            = var.node_max_count
-    os_disk_size_gb      = 50
-    os_disk_type         = "Managed"
-    type                 = "VirtualMachineScaleSets"
+    min_count           = var.node_min_count
+    max_count           = var.node_max_count
+    os_disk_size_gb     = 50
+    os_disk_type        = "Managed"
+    type                = "VirtualMachineScaleSets"
 
     # System node pool only — taint để app pod không schedule lên đây
     only_critical_addons_enabled = true
