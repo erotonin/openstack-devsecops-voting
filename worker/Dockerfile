@@ -11,4 +11,5 @@ RUN dotnet publish -c release -o /app -a $TARGETARCH --self-contained false --no
 FROM mcr.microsoft.com/dotnet/runtime:8.0-jammy-chiseled
 WORKDIR /app
 COPY --from=build /app .
+USER 10001
 ENTRYPOINT ["dotnet", "Worker.dll"]

@@ -127,6 +127,19 @@ data "aws_iam_policy_document" "external_secrets" {
       module.redis_secret.secret_arn,
     ]
   }
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "kms:Decrypt",
+      "kms:DescribeKey",
+    ]
+    resources = [
+      module.app_runtime_secret.kms_key_arn,
+      module.db_secret.kms_key_arn,
+      module.redis_secret.kms_key_arn,
+    ]
+  }
 }
 
 module "external_secrets_irsa" {

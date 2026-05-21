@@ -11,10 +11,10 @@ RUN apt-get update && apt-get upgrade -y && \
     # Remove package managers & shells to reduce attack surface
     rm -rf /usr/local/lib/python3.11/ensurepip && \
     rm -f /usr/local/bin/pip* && \
-    adduser --disabled-password --no-create-home appuser
+    adduser --disabled-password --no-create-home --uid 10001 appuser
 WORKDIR /app
 COPY --from=build /install/deps /usr/local
 COPY . .
-USER appuser
+USER 10001
 EXPOSE 8080
 CMD ["gunicorn", "app:app", "-b", "0.0.0.0:8080", "--log-file", "-", "--access-logfile", "-", "--workers", "4", "--keep-alive", "0"]

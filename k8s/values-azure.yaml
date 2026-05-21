@@ -13,13 +13,13 @@ ingress:
 images:
   vote:
     repository: devsecopsvotingacr7jg8dl.azurecr.io/voting-app-vote
-    tag: f2e8604c9ac4a7e3c708ae1d16682cc4b9db2994
+    tag: runtime-fix-20260521
   result:
     repository: devsecopsvotingacr7jg8dl.azurecr.io/voting-app-result
-    tag: f2e8604c9ac4a7e3c708ae1d16682cc4b9db2994
+    tag: runtime-fix-20260521
   worker:
     repository: devsecopsvotingacr7jg8dl.azurecr.io/voting-app-worker
-    tag: f2e8604c9ac4a7e3c708ae1d16682cc4b9db2994
+    tag: runtime-fix-20260521
   redis:
     repository: redis
     tag: 7-alpine

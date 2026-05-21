@@ -11,5 +11,6 @@ WORKDIR /app
 COPY --from=build /app/node_modules ./node_modules
 COPY server.js .
 COPY views ./views
+USER 10001
 EXPOSE 4000
 CMD ["server.js"]
