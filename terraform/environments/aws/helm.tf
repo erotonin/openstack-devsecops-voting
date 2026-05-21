@@ -28,7 +28,7 @@ resource "helm_release" "argocd" {
         service = {
           type = "ClusterIP"
         }
-        replicas = 2
+        replicas = 1
         ingress = {
           enabled = false
         }
@@ -37,10 +37,10 @@ resource "helm_release" "argocd" {
         replicas = 1
       }
       repoServer = {
-        replicas = 2
+        replicas = 1
       }
       applicationSet = {
-        replicas = 2
+        replicas = 1
       }
       configs = {
         cm = {
@@ -122,7 +122,7 @@ resource "helm_release" "gatekeeper" {
 
   values = [
     yamlencode({
-      replicas = 2
+      replicas = 1
       audit = {
         enabled = true
       }
@@ -152,9 +152,13 @@ resource "helm_release" "kube_prometheus_stack" {
   namespace        = "monitoring"
   create_namespace = true
   version          = "66.2.1"
+  timeout          = 900
 
   values = [
     yamlencode({
+      defaultRules = {
+        create = false
+      }
       grafana = {
         service = {
           type = "ClusterIP"
@@ -169,13 +173,17 @@ resource "helm_release" "kube_prometheus_stack" {
       prometheus = {
         prometheusSpec = {
           retention                               = "15d"
+          replicas                                = 1
           serviceMonitorSelectorNilUsesHelmValues = false
           ruleSelectorNilUsesHelmValues           = false
         }
       }
       alertmanager = {
-        alertmanagerSpec = {
-          replicas = 2
+        enabled = false
+      }
+      prometheusOperator = {
+        admissionWebhooks = {
+          enabled = false
         }
       }
     })
@@ -210,12 +218,14 @@ resource "helm_release" "loki" {
   namespace        = "logging"
   create_namespace = true
   version          = "6.23.0"
+  timeout          = 600
 
   values = [
     yamlencode({
       deploymentMode = "SingleBinary"
       loki = {
-        auth_enabled = false
+        auth_enabled  = false
+        useTestSchema = true
         commonConfig = {
           replication_factor = 1
         }
