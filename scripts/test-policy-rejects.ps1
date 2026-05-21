@@ -1,5 +1,6 @@
 param(
-    [string]$Namespace = "voting"
+    [string]$Namespace = "voting",
+    [string]$Context = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -27,7 +28,11 @@ foreach ($file in $files) {
     $path = Join-Path $PolicyDir $file
     Write-Host ""
     Write-Host "Applying $file. This should be denied." -ForegroundColor Yellow
-    kubectl apply -f $path -n $Namespace --dry-run=server
+    $kubectlArgs = @("apply", "-f", $path, "-n", $Namespace, "--dry-run=server")
+    if ($Context) {
+        $kubectlArgs += @("--context", $Context)
+    }
+    & kubectl @kubectlArgs
     if ($LASTEXITCODE -eq 0) {
         throw "$file was accepted, but it should have been denied by admission policy."
     }

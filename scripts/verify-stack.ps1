@@ -53,6 +53,8 @@ Invoke-Check "kubectl -n monitoring get pods"
 Invoke-Check "kubectl -n logging get pods"
 Invoke-Check "kubectl -n falco get pods"
 Invoke-Check "kubectl -n gatekeeper-system get pods"
+Invoke-Check "kubectl get constrainttemplates"
+Invoke-Check "kubectl get k8sdisallowlatesttag,k8srequiredcontainersecurity,k8srequiredresources"
 
 Write-Step "AWS application health checks"
 Invoke-Check "kubectl -n voting rollout status deploy/vote --timeout=2m"

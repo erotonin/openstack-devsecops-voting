@@ -224,6 +224,9 @@ Invoke-TerraformApply -Path $AwsEnv -Label "AWS primary controllers" -Targets @(
     "helm_release.falco"
 )
 
+Write-Step "Applying AWS Gatekeeper policies"
+Invoke-Native { & (Join-Path $Root "scripts/apply-gatekeeper-policies.ps1") } "Failed to apply AWS Gatekeeper policies"
+
 Invoke-TerraformApply -Path $AwsEnv -Label "AWS primary manifests"
 
 # Finish Azure after AWS has written tunnel details to remote state.
