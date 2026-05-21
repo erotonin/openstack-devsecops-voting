@@ -43,7 +43,8 @@ feature branch
 - Cosign image signing.
 - OWASP ZAP DAST.
 - Conftest and Gatekeeper policy checks.
-- Policy Controller or equivalent Cosign verification.
+- Cosign signing in CI, with Policy Controller installed as the cluster-side verification baseline.
+- Strict unsigned-image enforcement is enabled only after the demo images are signed and promoted through CI, otherwise it would block the current manually built student-demo images.
 
 ## Runtime Operations
 
