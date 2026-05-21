@@ -49,8 +49,9 @@ resource "aws_db_parameter_group" "main" {
 
   # Force SSL/TLS connection
   parameter {
-    name  = "rds.force_ssl"
-    value = "1"
+    name         = "rds.force_ssl"
+    value        = "1"
+    apply_method = "pending-reboot"
   }
 
   # Log slow queries (>1s)
