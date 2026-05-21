@@ -121,3 +121,9 @@ variable "environment" {
   default     = "full-demo"
   description = "Deployment environment label"
 }
+
+variable "azure_bgp_asn" {
+  type        = number
+  default     = 65000
+  description = "Azure VPN Gateway BGP ASN"
+}

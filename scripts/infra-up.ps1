@@ -27,7 +27,8 @@ function Assert-Command {
 function Invoke-TerraformApply {
     param(
         [string]$Path,
-        [string]$Label
+        [string]$Label,
+        [string[]]$Targets = @()
     )
 
     Push-Location $Path
@@ -43,8 +44,13 @@ function Invoke-TerraformApply {
             terraform validate
         }
 
+        $targetArgs = @()
+        foreach ($target in $Targets) {
+            $targetArgs += "-target=$target"
+        }
+
         Write-Step "$Label terraform plan"
-        terraform plan -out=tfplan
+        terraform plan @targetArgs -out=tfplan
 
         Write-Step "$Label terraform apply"
         if ($AutoApprove) {
@@ -66,8 +72,17 @@ aws sts get-caller-identity | Out-Host
 Write-Step "Checking Azure identity"
 az account show --output table | Out-Host
 
-Invoke-TerraformApply -Path $AzureEnv -Label "Azure warm standby"
+# First create Azure networking and VPN gateway so AWS can read the Azure VPN public IP.
+Invoke-TerraformApply -Path $AzureEnv -Label "Azure VPN gateway bootstrap" -Targets @(
+    "module.azure_networking",
+    "azurerm_public_ip.vpn_ip",
+    "azurerm_virtual_network_gateway.vng"
+)
+
 Invoke-TerraformApply -Path $AwsEnv -Label "AWS primary"
+
+# Finish Azure after AWS has written tunnel details to remote state.
+Invoke-TerraformApply -Path $AzureEnv -Label "Azure warm standby"
 
 Write-Step "Updating kubeconfig files"
 Push-Location $AwsEnv
@@ -93,4 +108,3 @@ try {
 
 Write-Step "Infrastructure apply completed"
 Write-Host "Next: verify ArgoCD, ESO, Gatekeeper, monitoring, logging, and Falco once their modules are added." -ForegroundColor Green
-

@@ -30,6 +30,10 @@ output "key_vault_uri" {
 output "app_runtime_secret_name" {
   value = azurerm_key_vault_secret.app_runtime.name
 }
+
+output "azure_bgp_asn" {
+  value = var.azure_bgp_asn
+}
 output "aks_client_certificate" {
   value     = module.aks.client_certificate
   sensitive = true

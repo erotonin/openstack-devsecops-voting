@@ -42,3 +42,24 @@ output "app_runtime_secret_name" {
   value       = module.app_runtime_secret.secret_name
   description = "AWS Secrets Manager app runtime secret name consumed by ESO"
 }
+
+output "aws_tunnel1_ip" {
+  value       = aws_vpn_connection.vpn.tunnel1_address
+  description = "AWS VPN tunnel 1 public IP"
+}
+
+output "aws_tunnel1_preshared_key" {
+  value       = aws_vpn_connection.vpn.tunnel1_preshared_key
+  description = "AWS VPN tunnel 1 pre-shared key"
+  sensitive   = true
+}
+
+output "aws_tunnel1_vgw_inside_address" {
+  value       = aws_vpn_connection.vpn.tunnel1_vgw_inside_address
+  description = "AWS-side BGP inside address for tunnel 1"
+}
+
+output "aws_tunnel1_cgw_inside_address" {
+  value       = aws_vpn_connection.vpn.tunnel1_cgw_inside_address
+  description = "Customer/Azure-side BGP inside address for tunnel 1"
+}

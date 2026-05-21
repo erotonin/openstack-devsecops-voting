@@ -34,3 +34,11 @@ variable "azure_db_host" {
 variable "azure_redis_host" {
   default = "redis-restore-placeholder.redis.cache.windows.net"
 }
+
+variable "azure_bgp_asn" {
+  default = 65000
+}
+
+variable "aws_bgp_asn" {
+  default = 64512
+}

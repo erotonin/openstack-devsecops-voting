@@ -37,3 +37,8 @@ output "azs" {
   description = "Availability Zones used"
   value       = var.azs
 }
+
+output "private_route_table_ids" {
+  description = "Private route table IDs for VPN route propagation"
+  value       = aws_route_table.private[*].id
+}
