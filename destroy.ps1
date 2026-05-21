@@ -1,7 +1,6 @@
-cd terraform/environments/azure
-terraform destroy -target=azurerm_virtual_network_gateway_connection.vpn_conn -target=azurerm_local_network_gateway.lng -auto-approve
-cd ../aws
-terraform destroy -auto-approve
-cd ../azure
-terraform destroy -auto-approve
-cd ../../../
+#!/usr/bin/env pwsh
+
+$ErrorActionPreference = "Stop"
+$Root = Split-Path -Parent $MyInvocation.MyCommand.Path
+
+& (Join-Path $Root "scripts/infra-down.ps1") -Environment full-demo @args
