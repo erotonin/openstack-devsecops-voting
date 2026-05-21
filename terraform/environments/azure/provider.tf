@@ -5,7 +5,7 @@ terraform {
       version = "~> 3.0"
     }
   }
-  
+
   # Cấu hình "Móc" vào ổ cứng Azure ta đã tạo ban nãy
   backend "azurerm" {
     resource_group_name  = "rg-devsecops-voting-tfstate"

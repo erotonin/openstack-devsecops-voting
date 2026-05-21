@@ -1,11 +1,32 @@
+locals {
+  common_tags = {
+    Project     = "devsecops-voting"
+    Environment = var.environment
+    ManagedBy   = "terraform"
+  }
+}
+
 module "networking" {
   source           = "../../modules/networking"
+  name_prefix      = var.name_prefix
   vpc_cidr         = var.vpc_cidr
   public_subnets   = var.public_subnets
   private_subnets  = var.private_subnets
   database_subnets = var.database_subnets
   cluster_name     = var.cluster_name
   azs              = ["${var.aws_region}a", "${var.aws_region}b"]
+  tags             = local.common_tags
+}
+
+module "security_groups" {
+  source         = "../../modules/security_groups"
+  name_prefix    = var.name_prefix
+  vpc_id         = module.networking.vpc_id
+  vpc_cidr       = module.networking.vpc_cidr
+  cluster_name   = var.cluster_name
+  eks_pod_cidrs  = var.private_subnets
+  peer_vpc_cidrs = ["10.1.0.0/16"]
+  tags           = local.common_tags
 }
 
 module "eks" {
@@ -16,9 +37,59 @@ module "eks" {
   node_desired_size   = var.node_desired_size
   node_max_size       = var.node_max_size
   node_min_size       = var.node_min_size
+  tags                = local.common_tags
 }
 
 module "ecr" {
   source     = "../../modules/ecr"
   repo_names = var.ecr_repo_names
+}
+
+module "db_secret" {
+  source = "../../modules/secrets"
+  name   = "${var.name_prefix}/db"
+  secret_data = {
+    username = "postgres"
+    database = "voting"
+  }
+  tags = local.common_tags
+}
+
+module "redis_secret" {
+  source = "../../modules/secrets"
+  name   = "${var.name_prefix}/redis"
+  secret_data = {
+    username = "default"
+  }
+  tags = local.common_tags
+}
+
+module "rds" {
+  source              = "../../modules/rds"
+  identifier          = "${var.name_prefix}-postgres"
+  subnet_ids          = module.networking.database_subnet_ids
+  security_group_ids  = [module.security_groups.rds_sg_id]
+  master_username     = "postgres"
+  master_password     = module.db_secret.password
+  db_name             = "voting"
+  deletion_protection = false
+  skip_final_snapshot = true
+  apply_immediately   = true
+  tags                = local.common_tags
+}
+
+resource "aws_cloudwatch_log_group" "redis" {
+  name              = "/aws/elasticache/${var.name_prefix}-redis"
+  retention_in_days = 30
+  tags              = local.common_tags
+}
+
+module "elasticache" {
+  source             = "../../modules/elasticache"
+  name               = "${var.name_prefix}-redis"
+  subnet_ids         = module.networking.private_subnet_ids
+  security_group_ids = [module.security_groups.elasticache_sg_id]
+  auth_token         = module.redis_secret.password
+  log_group_name     = aws_cloudwatch_log_group.redis.name
+  tags               = local.common_tags
 }

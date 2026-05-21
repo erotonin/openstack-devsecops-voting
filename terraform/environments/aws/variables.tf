@@ -109,3 +109,15 @@ variable "falco_webhook_url" {
   default     = ""
   description = "Optional Falcosidekick webhook URL for alert forwarding"
 }
+
+variable "name_prefix" {
+  type        = string
+  default     = "devsecops-voting"
+  description = "Common resource name prefix"
+}
+
+variable "environment" {
+  type        = string
+  default     = "full-demo"
+  description = "Deployment environment label"
+}

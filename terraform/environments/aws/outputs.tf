@@ -17,3 +17,23 @@ output "ecr_repository_urls" {
   value       = module.ecr.repository_urls
   description = "ECR Repository URLs"
 }
+
+output "rds_endpoint" {
+  value       = module.rds.endpoint
+  description = "RDS PostgreSQL endpoint"
+}
+
+output "redis_endpoint" {
+  value       = module.elasticache.primary_endpoint_address
+  description = "ElastiCache Redis primary endpoint"
+}
+
+output "db_secret_name" {
+  value       = module.db_secret.secret_name
+  description = "AWS Secrets Manager DB secret name"
+}
+
+output "redis_secret_name" {
+  value       = module.redis_secret.secret_name
+  description = "AWS Secrets Manager Redis secret name"
+}

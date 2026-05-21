@@ -116,7 +116,7 @@ resource "aws_security_group" "eks_node_extra" {
   }
 
   egress {
-    description = "All egress (pods cần internet for image pull, API call)"
+    description = "All egress for image pulls and API calls"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
