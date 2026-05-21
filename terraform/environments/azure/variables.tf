@@ -6,6 +6,16 @@ variable "cluster_name" {
   default = "devsecops-voting-aks"
 }
 
+variable "gitops_repo_url" {
+  default     = "https://github.com/erotonin/devsecops-voting.git"
+  description = "Git repository URL used by the standby ArgoCD controller"
+}
+
+variable "gitops_target_revision" {
+  default     = "main"
+  description = "Git revision tracked by the standby ArgoCD controller"
+}
+
 variable "vnet_cidr" {
   description = "Dải IP VNet không được trùng với AWS VPC"
   default     = "10.1.0.0/16"

@@ -10,6 +10,7 @@ This project implements a production-like student capstone for a multi-cloud Dev
 - AWS and Azure are connected with route-based IPSec VPN and BGP.
 - GitHub Actions uses OIDC federation, not static cloud access keys.
 - ArgoCD deploys the application with GitOps.
+- AWS runs the primary ArgoCD hub, while AKS has a small standby ArgoCD controller for DR.
 - External Secrets Operator syncs secrets from AWS Secrets Manager and Azure Key Vault.
 - Kubernetes admission policies block unsafe workloads.
 - Runtime operations include monitoring, logging, detection, and response.
@@ -107,4 +108,3 @@ SLO demo targets:
 - DR data recovery is backup/restore or seed-restore based.
 - Continuous DB replication is future work.
 - Auto-quarantine is not enabled by default because false positives can harm production workloads.
-

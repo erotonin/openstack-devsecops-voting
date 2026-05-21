@@ -47,6 +47,14 @@ externalSecret:
   storeName: azure-key-vault
   remoteKey: voting-app-runtime
 
+monitoring:
+  enabled: false
+  prometheusRelease: kube-prometheus-stack
+  slo:
+    successRateTarget: 0.99
+    p95LatencySeconds: 0.5
+    alertFor: 1m
+
 resources:
   vote:
     requests:
