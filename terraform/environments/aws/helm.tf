@@ -331,7 +331,7 @@ resource "helm_release" "falco" {
         "voting-runtime-rules.yaml" = <<-EOT
         - rule: Shell Spawned In Voting Namespace
           desc: Detect shell spawned inside a voting namespace container
-          condition: spawned_process and container and k8s.ns.name = "voting" and proc.name in (bash, sh, zsh, ash)
+          condition: evt.type = execve and container and proc.cmdline contains "sh"
           output: Shell spawned in voting namespace (user=%user.name command=%proc.cmdline pod=%k8s.pod.name container=%container.name)
           priority: WARNING
           tags: [runtime, voting]

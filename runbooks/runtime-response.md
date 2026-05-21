@@ -15,7 +15,10 @@ Auto-quarantine is intentionally not enabled by default. A false positive should
 Run a shell inside a voting pod:
 
 ```powershell
-kubectl -n voting exec deploy/vote -- sh -c "id"
+$ctx = "arn:aws:eks:us-east-1:800557027783:cluster/voting-app-cluster"
+$pod = kubectl get pod -n voting -l app=vote --context $ctx -o jsonpath='{.items[0].metadata.name}'
+kubectl exec -n voting $pod --context $ctx -- sh -c "id"
+kubectl logs -n falco -l app.kubernetes.io/name=falco -c falco --context $ctx --tail=200 | Select-String "Shell Spawned In Voting Namespace"
 ```
 
 Expected result:
