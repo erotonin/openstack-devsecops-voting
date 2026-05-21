@@ -16,8 +16,10 @@ namespace Worker
         {
             try
             {
-                var pgsql = OpenDbConnection("Server=db;Username=postgres;Password=postgres;");
-                var redisConn = OpenRedisConnection("redis");
+                var dbConnectionString = BuildDbConnectionString();
+                var redisConnectionString = BuildRedisConnectionString();
+                var pgsql = OpenDbConnection(dbConnectionString);
+                var redisConn = OpenRedisConnection(redisConnectionString);
                 var redis = redisConn.GetDatabase();
 
                 // Keep alive is not implemented in Npgsql yet. This workaround was recommended:
@@ -34,7 +36,7 @@ namespace Worker
                     // Reconnect redis if down
                     if (redisConn == null || !redisConn.IsConnected) {
                         Console.WriteLine("Reconnecting Redis");
-                        redisConn = OpenRedisConnection("redis");
+                        redisConn = OpenRedisConnection(redisConnectionString);
                         redis = redisConn.GetDatabase();
                     }
                     string json = redis.ListLeftPopAsync("votes").Result;
@@ -46,7 +48,7 @@ namespace Worker
                         if (!pgsql.State.Equals(System.Data.ConnectionState.Open))
                         {
                             Console.WriteLine("Reconnecting DB");
-                            pgsql = OpenDbConnection("Server=db;Username=postgres;Password=postgres;");
+                            pgsql = OpenDbConnection(dbConnectionString);
                         }
                         else
                         { // Normal +1 vote requested
@@ -102,18 +104,14 @@ namespace Worker
             return connection;
         }
 
-        private static ConnectionMultiplexer OpenRedisConnection(string hostname)
+        private static ConnectionMultiplexer OpenRedisConnection(string configuration)
         {
-            // Use IP address to workaround https://github.com/StackExchange/StackExchange.Redis/issues/410
-            var ipAddress = GetIp(hostname);
-            Console.WriteLine($"Found redis at {ipAddress}");
-
             while (true)
             {
                 try
                 {
                     Console.Error.WriteLine("Connecting to redis");
-                    return ConnectionMultiplexer.Connect(ipAddress);
+                    return ConnectionMultiplexer.Connect(configuration);
                 }
                 catch (RedisConnectionException)
                 {
@@ -122,13 +120,6 @@ namespace Worker
                 }
             }
         }
-
-        private static string GetIp(string hostname)
-            => Dns.GetHostEntryAsync(hostname)
-                .Result
-                .AddressList
-                .First(a => a.AddressFamily == AddressFamily.InterNetwork)
-                .ToString();
 
         private static void UpdateVote(NpgsqlConnection connection, string voterId, string vote)
         {
@@ -149,6 +140,34 @@ namespace Worker
             {
                 command.Dispose();
             }
+        }
+
+        private static string BuildDbConnectionString()
+        {
+            var host = Environment.GetEnvironmentVariable("DB_HOST") ?? "db";
+            var port = Environment.GetEnvironmentVariable("DB_PORT") ?? "5432";
+            var user = Environment.GetEnvironmentVariable("DB_USER") ?? "postgres";
+            var password = Environment.GetEnvironmentVariable("DB_PASSWORD") ?? "password";
+            var database = Environment.GetEnvironmentVariable("DB_NAME") ?? "postgres";
+            var sslMode = Environment.GetEnvironmentVariable("DB_SSL_MODE") ?? "Disable";
+
+            return $"Host={host};Port={port};Username={user};Password={password};Database={database};SSL Mode={sslMode};";
+        }
+
+        private static string BuildRedisConnectionString()
+        {
+            var host = Environment.GetEnvironmentVariable("REDIS_HOST") ?? "redis";
+            var port = Environment.GetEnvironmentVariable("REDIS_PORT") ?? "6379";
+            var password = Environment.GetEnvironmentVariable("REDIS_PASSWORD");
+            var ssl = Environment.GetEnvironmentVariable("REDIS_SSL") ?? "false";
+            var configuration = $"{host}:{port},ssl={ssl.ToLowerInvariant()}";
+
+            if (!string.IsNullOrWhiteSpace(password))
+            {
+                configuration += $",password={password}";
+            }
+
+            return configuration;
         }
     }
 }

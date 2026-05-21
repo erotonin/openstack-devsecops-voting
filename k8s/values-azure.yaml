@@ -1,6 +1,15 @@
 replicaCount: 1
+
 service:
-  type: NodePort
+  type: ClusterIP
+
+ingress:
+  enabled: false
+  className: ""
+  hosts:
+    vote: vote-azure.example.com
+    result: result-azure.example.com
+
 images:
   vote:
     repository: devsecopsvotingacrk1nhkh.azurecr.io/voting-app-vote
@@ -17,7 +26,43 @@ images:
   db:
     repository: postgres
     tag: 15-alpine
-postgres:
-  user: postgres
-  password: password
-  db: postgres
+
+appSecretName: voting-app-runtime
+
+serviceAccounts:
+  vote:
+    name: vote-sa
+    annotations: {}
+  result:
+    name: result-sa
+    annotations: {}
+  worker:
+    name: worker-sa
+    annotations: {}
+
+localDependencies:
+  enabled: false
+
+resources:
+  vote:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  result:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  worker:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+

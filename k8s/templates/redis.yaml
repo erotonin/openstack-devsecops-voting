@@ -1,3 +1,4 @@
+{{- if .Values.localDependencies.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -29,3 +30,4 @@ spec:
     targetPort: 6379
   selector:
     app: redis
+{{- end }}

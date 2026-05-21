@@ -1,3 +1,4 @@
+{{- if .Values.localDependencies.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -17,11 +18,11 @@ spec:
         image: {{ .Values.images.db.repository }}:{{ .Values.images.db.tag }}
         env:
         - name: POSTGRES_USER
-          value: {{ .Values.postgres.user | quote }}
+          value: postgres
         - name: POSTGRES_PASSWORD
-          value: {{ .Values.postgres.password | quote }}
+          value: password
         - name: POSTGRES_DB
-          value: {{ .Values.postgres.db | quote }}
+          value: postgres
         ports:
         - containerPort: 5432
 ---
@@ -35,3 +36,4 @@ spec:
     targetPort: 5432
   selector:
     app: db
+{{- end }}

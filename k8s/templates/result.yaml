@@ -2,31 +2,86 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: result
+  labels:
+    app: result
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       app: result
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   template:
     metadata:
       labels:
         app: result
     spec:
+      serviceAccountName: {{ .Values.serviceAccounts.result.name }}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app: result
       containers:
       - name: result
         image: {{ .Values.images.result.repository }}:{{ .Values.images.result.tag }}
+        imagePullPolicy: IfNotPresent
+        envFrom:
+        - secretRef:
+            name: {{ .Values.appSecretName }}
         ports:
         - containerPort: 4000
-          name: result
+          name: http
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        resources:
+{{ toYaml .Values.resources.result | indent 10 }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: result
+  labels:
+    app: result
 spec:
-  type: {{ .Values.service.type | default "LoadBalancer" }}
+  type: {{ .Values.service.type | default "ClusterIP" }}
   ports:
   - port: 80
-    targetPort: 4000
+    targetPort: http
+    name: http
   selector:
     app: result
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: result
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: result

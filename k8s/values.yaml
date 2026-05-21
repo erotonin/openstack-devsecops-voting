@@ -1,34 +1,29 @@
 replicaCount: 1
-
 service:
   type: ClusterIP
-
 ingress:
   enabled: false
   className: ""
   hosts:
     vote: vote.local
     result: result.local
-
 images:
   vote:
-    repository: 800557027783.dkr.ecr.us-east-1.amazonaws.com/voting-app-vote
-    tag: f2e8604c9ac4a7e3c708ae1d16682cc4b9db2994
+    repository: voting-app-vote
+    tag: dev
   result:
-    repository: 800557027783.dkr.ecr.us-east-1.amazonaws.com/voting-app-result
-    tag: f2e8604c9ac4a7e3c708ae1d16682cc4b9db2994
+    repository: voting-app-result
+    tag: dev
   worker:
-    repository: 800557027783.dkr.ecr.us-east-1.amazonaws.com/voting-app-worker
-    tag: f2e8604c9ac4a7e3c708ae1d16682cc4b9db2994
+    repository: voting-app-worker
+    tag: dev
   redis:
     repository: redis
     tag: 7-alpine
   db:
     repository: postgres
     tag: 15-alpine
-
 appSecretName: voting-app-runtime
-
 serviceAccounts:
   vote:
     name: vote-sa
@@ -39,10 +34,8 @@ serviceAccounts:
   worker:
     name: worker-sa
     annotations: {}
-
 localDependencies:
-  enabled: true
-
+  enabled: false
 resources:
   vote:
     requests:

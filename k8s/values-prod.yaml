@@ -1,6 +1,15 @@
 replicaCount: 3
+
 service:
-  type: LoadBalancer
+  type: ClusterIP
+
+ingress:
+  enabled: false
+  className: ""
+  hosts:
+    vote: vote.example.com
+    result: result.example.com
+
 images:
   vote:
     repository: 800557027783.dkr.ecr.us-east-1.amazonaws.com/voting-app-vote
@@ -17,7 +26,43 @@ images:
   db:
     repository: postgres
     tag: 15-alpine
-postgres:
-  user: postgres
-  password: password
-  db: postgres
+
+appSecretName: voting-app-runtime
+
+serviceAccounts:
+  vote:
+    name: vote-sa
+    annotations: {}
+  result:
+    name: result-sa
+    annotations: {}
+  worker:
+    name: worker-sa
+    annotations: {}
+
+localDependencies:
+  enabled: false
+
+resources:
+  vote:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  result:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  worker:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+

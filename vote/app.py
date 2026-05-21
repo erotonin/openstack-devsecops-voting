@@ -18,8 +18,19 @@ app.logger.setLevel(logging.INFO)
 
 def get_redis():
     if not hasattr(g, 'redis'):
-        g.redis = Redis(host="redis", db=0, socket_timeout=5)
+        g.redis = Redis(
+            host=os.getenv("REDIS_HOST", "redis"),
+            port=int(os.getenv("REDIS_PORT", "6379")),
+            password=os.getenv("REDIS_PASSWORD") or None,
+            db=int(os.getenv("REDIS_DB", "0")),
+            socket_timeout=5,
+            ssl=os.getenv("REDIS_SSL", "false").lower() == "true",
+        )
     return g.redis
+
+@app.route("/healthz", methods=["GET"])
+def healthz():
+    return {"status": "ok", "service": "vote"}, 200
 
 @app.route("/", methods=['POST','GET'])
 def hello():
@@ -43,7 +54,13 @@ def hello():
         hostname=hostname,
         vote=vote,
     ))
-    resp.set_cookie('voter_id', voter_id)
+    resp.set_cookie(
+        'voter_id',
+        voter_id,
+        httponly=True,
+        secure=os.getenv("COOKIE_SECURE", "true").lower() == "true",
+        samesite=os.getenv("COOKIE_SAMESITE", "Lax"),
+    )
     return resp
 
 

@@ -2,31 +2,86 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: vote
+  labels:
+    app: vote
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       app: vote
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   template:
     metadata:
       labels:
         app: vote
     spec:
+      serviceAccountName: {{ .Values.serviceAccounts.vote.name }}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app: vote
       containers:
       - name: vote
         image: {{ .Values.images.vote.repository }}:{{ .Values.images.vote.tag }}
+        imagePullPolicy: IfNotPresent
+        envFrom:
+        - secretRef:
+            name: {{ .Values.appSecretName }}
         ports:
         - containerPort: 8080
-          name: vote
+          name: http
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        resources:
+{{ toYaml .Values.resources.vote | indent 10 }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: vote
+  labels:
+    app: vote
 spec:
-  type: {{ .Values.service.type | default "LoadBalancer" }}
+  type: {{ .Values.service.type | default "ClusterIP" }}
   ports:
   - port: 80
-    targetPort: 8080
+    targetPort: http
+    name: http
   selector:
     app: vote
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: vote
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: vote
