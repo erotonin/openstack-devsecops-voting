@@ -327,9 +327,6 @@ resource "aws_eks_node_group" "main" {
     aws_iam_role_policy_attachment.ssm_managed,
   ]
 
-  lifecycle {
-    ignore_changes = [scaling_config[0].desired_size]
-  }
 }
 
 # ─── EKS Add-ons ──────────────────────────────────────────────────

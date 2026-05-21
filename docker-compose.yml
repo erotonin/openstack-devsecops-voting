@@ -4,7 +4,7 @@ services:
     container_name: db
     environment: 
       POSTGRES_USER: "postgres"
-      POSTGRES_PASSWORD: "password"
+      POSTGRES_PASSWORD: "postgres"
     volumes:
       - db-data:/var/lib/postgresql/data
     networks:
@@ -36,7 +36,7 @@ services:
       DB_HOST: db
       DB_PORT: "5432"
       DB_USER: postgres
-      DB_PASSWORD: password
+      DB_PASSWORD: postgres
       DB_NAME: postgres
     networks:
       - voting-network
@@ -51,7 +51,7 @@ services:
       DB_HOST: db
       DB_PORT: "5432"
       DB_USER: postgres
-      DB_PASSWORD: password
+      DB_PASSWORD: postgres
       DB_NAME: postgres
     networks:
       - voting-network
