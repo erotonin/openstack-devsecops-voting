@@ -115,6 +115,39 @@ function Remove-FailedEksNodeGroup {
     } "Failed while waiting for failed EKS node group deletion"
 }
 
+function Update-EksKubeconfig {
+    param(
+        [string]$Path
+    )
+
+    Push-Location $Path
+    try {
+        $awsRegion = terraform output -raw aws_region 2>$null
+        if (-not $awsRegion) { $awsRegion = "us-east-1" }
+        $eksCluster = terraform output -raw cluster_name
+        Invoke-Native { aws eks update-kubeconfig --region $awsRegion --name $eksCluster } "Failed to update EKS kubeconfig"
+    } finally {
+        Pop-Location
+    }
+}
+
+function Update-AksKubeconfig {
+    param(
+        [string]$Path
+    )
+
+    Push-Location $Path
+    try {
+        $rgName = terraform output -raw resource_group_name 2>$null
+        $aksName = terraform output -raw aks_cluster_name 2>$null
+        if ($rgName -and $aksName) {
+            Invoke-Native { az aks get-credentials --resource-group $rgName --name $aksName --overwrite-existing } "Failed to update AKS kubeconfig"
+        }
+    } finally {
+        Pop-Location
+    }
+}
+
 Write-Step "Checking local prerequisites"
 @("terraform", "aws", "az", "kubectl", "helm") | ForEach-Object { Assert-Command $_ }
 
@@ -154,7 +187,21 @@ Invoke-TerraformApply -Path $AwsEnv -Label "AWS primary foundation" -Targets @(
     "aws_vpn_gateway_route_propagation.private"
 )
 
-Invoke-TerraformApply -Path $AwsEnv -Label "AWS primary runtime"
+Update-EksKubeconfig -Path $AwsEnv
+
+Invoke-TerraformApply -Path $AwsEnv -Label "AWS primary controllers" -Targets @(
+    "kubernetes_namespace.voting",
+    "helm_release.argocd",
+    "helm_release.external_secrets",
+    "helm_release.gatekeeper",
+    "helm_release.policy_controller",
+    "helm_release.kube_prometheus_stack",
+    "helm_release.loki",
+    "helm_release.promtail",
+    "helm_release.falco"
+)
+
+Invoke-TerraformApply -Path $AwsEnv -Label "AWS primary manifests"
 
 # Finish Azure after AWS has written tunnel details to remote state.
 Invoke-TerraformApply -Path $AzureEnv -Label "Azure warm standby foundation" -Targets @(
@@ -175,29 +222,19 @@ Invoke-TerraformApply -Path $AzureEnv -Label "Azure warm standby foundation" -Ta
     "module.external_secrets_workload_identity"
 )
 
-Invoke-TerraformApply -Path $AzureEnv -Label "Azure warm standby runtime"
+Update-AksKubeconfig -Path $AzureEnv
+
+Invoke-TerraformApply -Path $AzureEnv -Label "Azure warm standby controllers" -Targets @(
+    "kubernetes_namespace.voting",
+    "helm_release.argocd",
+    "helm_release.external_secrets"
+)
+
+Invoke-TerraformApply -Path $AzureEnv -Label "Azure warm standby manifests"
 
 Write-Step "Updating kubeconfig files"
-Push-Location $AwsEnv
-try {
-    $awsRegion = terraform output -raw aws_region 2>$null
-    if (-not $awsRegion) { $awsRegion = "us-east-1" }
-    $eksCluster = terraform output -raw cluster_name
-    Invoke-Native { aws eks update-kubeconfig --region $awsRegion --name $eksCluster } "Failed to update EKS kubeconfig"
-} finally {
-    Pop-Location
-}
-
-Push-Location $AzureEnv
-try {
-    $rgName = terraform output -raw resource_group_name 2>$null
-    $aksName = terraform output -raw aks_cluster_name 2>$null
-    if ($rgName -and $aksName) {
-        Invoke-Native { az aks get-credentials --resource-group $rgName --name $aksName --overwrite-existing } "Failed to update AKS kubeconfig"
-    }
-} finally {
-    Pop-Location
-}
+Update-EksKubeconfig -Path $AwsEnv
+Update-AksKubeconfig -Path $AzureEnv
 
 Write-Step "Infrastructure apply completed"
 Write-Host "Next: verify ArgoCD, ESO, Gatekeeper, monitoring, logging, and Falco once their modules are added." -ForegroundColor Green
