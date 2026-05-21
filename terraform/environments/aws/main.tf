@@ -109,7 +109,7 @@ module "app_runtime_secret" {
     DB_PASSWORD    = module.db_secret.password
     DB_NAME        = module.rds.db_name
     DB_SSL_MODE    = "Require"
-    DATABASE_URL   = "postgres://postgres:${module.db_secret.password}@${module.rds.address}:${module.rds.port}/${module.rds.db_name}?sslmode=require"
+    DATABASE_URL   = "postgres://postgres:${urlencode(module.db_secret.password)}@${module.rds.address}:${module.rds.port}/${module.rds.db_name}?sslmode=require"
   }
   tags = local.common_tags
 }

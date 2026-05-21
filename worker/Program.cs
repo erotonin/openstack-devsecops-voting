@@ -147,11 +147,12 @@ namespace Worker
             var host = Environment.GetEnvironmentVariable("DB_HOST") ?? "db";
             var port = Environment.GetEnvironmentVariable("DB_PORT") ?? "5432";
             var user = Environment.GetEnvironmentVariable("DB_USER") ?? "postgres";
-            var password = Environment.GetEnvironmentVariable("DB_PASSWORD") ?? "password";
+            var password = Environment.GetEnvironmentVariable("DB_PASSWORD") ?? "postgres";
             var database = Environment.GetEnvironmentVariable("DB_NAME") ?? "postgres";
             var sslMode = Environment.GetEnvironmentVariable("DB_SSL_MODE") ?? "Disable";
+            var trustServerCertificate = Environment.GetEnvironmentVariable("DB_TRUST_SERVER_CERTIFICATE") ?? "true";
 
-            return $"Host={host};Port={port};Username={user};Password={password};Database={database};SSL Mode={sslMode};";
+            return $"Host={host};Port={port};Username={user};Password={password};Database={database};SSL Mode={sslMode};Trust Server Certificate={trustServerCertificate};";
         }
 
         private static string BuildRedisConnectionString()

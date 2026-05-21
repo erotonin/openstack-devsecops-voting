@@ -44,7 +44,7 @@ resource "azurerm_key_vault_secret" "app_runtime" {
     DB_PASSWORD    = random_password.azure_db_password.result
     DB_NAME        = "voting"
     DB_SSL_MODE    = "Require"
-    DATABASE_URL   = "postgres://postgres:${random_password.azure_db_password.result}@${var.azure_db_host}:5432/voting?sslmode=require"
+    DATABASE_URL   = "postgres://postgres:${urlencode(random_password.azure_db_password.result)}@${var.azure_db_host}:5432/voting?sslmode=require"
   })
 
   depends_on = [azurerm_role_assignment.current_key_vault_admin]
