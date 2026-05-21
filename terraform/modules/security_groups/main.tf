@@ -1,14 +1,3 @@
-# ─────────────────────────────────────────────────────────────────
-# Security Groups Module — Least Privilege
-#
-# Tạo các SG:
-#   - alb_sg          → ALB Ingress public-facing (443/80 from 0.0.0.0/0)
-#   - eks_node_sg     → EKS worker node (managed by EKS, đây chỉ là extra)
-#   - rds_sg          → RDS Postgres (5432 chỉ từ EKS pod CIDR)
-#   - elasticache_sg  → ElastiCache Redis (6379 chỉ từ EKS pod CIDR)
-#   - vpn_sg          → VPN endpoint
-# ─────────────────────────────────────────────────────────────────
-
 locals {
   common_tags = merge(var.tags, {
     Module    = "security_groups"
@@ -16,10 +5,9 @@ locals {
   })
 }
 
-# ─── ALB Security Group ───────────────────────────────────────────
 resource "aws_security_group" "alb" {
   name        = "${var.name_prefix}-alb-sg"
-  description = "ALB ingress — HTTPS/HTTP from internet"
+  description = "ALB ingress HTTPS and HTTP from internet"
   vpc_id      = var.vpc_id
 
   ingress {
@@ -51,10 +39,9 @@ resource "aws_security_group" "alb" {
   })
 }
 
-# ─── RDS Security Group ───────────────────────────────────────────
 resource "aws_security_group" "rds" {
   name        = "${var.name_prefix}-rds-sg"
-  description = "RDS Postgres — only from EKS pods"
+  description = "RDS Postgres only from EKS pods"
   vpc_id      = var.vpc_id
 
   ingress {
@@ -65,27 +52,22 @@ resource "aws_security_group" "rds" {
     cidr_blocks = var.eks_pod_cidrs
   }
 
-  # Cho VPN peer (Azure side) connect cho DR scenario
   ingress {
-    description = "Postgres from peer (Azure VPN)"
+    description = "Postgres from peer Azure VPN"
     from_port   = 5432
     to_port     = 5432
     protocol    = "tcp"
     cidr_blocks = var.peer_vpc_cidrs
   }
 
-  # Egress mặc định deny (RDS không cần egress ra ngoài)
-  # KHÔNG mở egress 0.0.0.0/0 — least privilege
-
   tags = merge(local.common_tags, {
     Name = "${var.name_prefix}-rds-sg"
   })
 }
 
-# ─── ElastiCache Redis Security Group ─────────────────────────────
 resource "aws_security_group" "elasticache" {
   name        = "${var.name_prefix}-elasticache-sg"
-  description = "ElastiCache Redis — only from EKS pods"
+  description = "ElastiCache Redis only from EKS pods"
   vpc_id      = var.vpc_id
 
   ingress {
@@ -101,10 +83,9 @@ resource "aws_security_group" "elasticache" {
   })
 }
 
-# ─── EKS Node extra SG (allow ALB → node, allow node → RDS, ...) ──
 resource "aws_security_group" "eks_node_extra" {
   name        = "${var.name_prefix}-eks-node-extra-sg"
-  description = "Extra rules for EKS node (in addition to managed SG)"
+  description = "Extra rules for EKS node"
   vpc_id      = var.vpc_id
 
   ingress {
@@ -129,7 +110,6 @@ resource "aws_security_group" "eks_node_extra" {
   })
 }
 
-# ─── VPN Security Group ───────────────────────────────────────────
 resource "aws_security_group" "vpn" {
   name        = "${var.name_prefix}-vpn-sg"
   description = "Site-to-site VPN to Azure"
@@ -153,8 +133,8 @@ resource "aws_security_group" "vpn" {
 
   ingress {
     description = "ESP"
-    from_port   = -1
-    to_port     = -1
+    from_port   = 0
+    to_port     = 0
     protocol    = "50"
     cidr_blocks = var.peer_vpc_cidrs
   }

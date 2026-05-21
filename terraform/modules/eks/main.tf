@@ -22,6 +22,36 @@ resource "aws_kms_key" "eks" {
   description             = "KMS key for EKS ${var.cluster_name} secret encryption"
   deletion_window_in_days = 30
   enable_key_rotation     = true
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "EnableIAMUserPermissions"
+        Effect    = "Allow"
+        Principal = { AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root" }
+        Action    = "kms:*"
+        Resource  = "*"
+      },
+      {
+        Sid       = "AllowCloudWatchLogsEncryption"
+        Effect    = "Allow"
+        Principal = { Service = "logs.${data.aws_region.current.name}.amazonaws.com" }
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey"
+        ]
+        Resource = "*"
+        Condition = {
+          ArnLike = {
+            "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/eks/${var.cluster_name}/cluster"
+          }
+        }
+      }
+    ]
+  })
 
   tags = merge(local.common_tags, {
     Name = "${var.cluster_name}-eks-kms"
@@ -77,6 +107,7 @@ resource "aws_kms_alias" "ebs" {
 }
 
 data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
 
 # ─── IAM Role cho EKS Control Plane ───────────────────────────────
 resource "aws_iam_role" "eks_cluster" {
