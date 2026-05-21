@@ -4,6 +4,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$PSNativeCommandUseErrorActionPreference = $false
 
 function Write-Step {
     param([string]$Message)
@@ -25,14 +26,16 @@ function Get-AwsQuota {
         [string]$Name
     )
 
-    $value = aws service-quotas get-service-quota `
+    $value = & aws service-quotas get-service-quota `
         --service-code $ServiceCode `
         --quota-code $QuotaCode `
         --region $AwsRegion `
         --query "Quota.Value" `
         --output text 2>$null
 
-    if ($LASTEXITCODE -ne 0 -or -not $value) {
+    $exitCode = $LASTEXITCODE
+
+    if ($exitCode -ne 0 -or -not $value) {
         [pscustomobject]@{ Cloud = "AWS"; Name = $Name; Limit = "unknown"; Region = $AwsRegion }
     } else {
         [pscustomobject]@{ Cloud = "AWS"; Name = $Name; Limit = $value; Region = $AwsRegion }
@@ -45,8 +48,10 @@ function Get-AzureUsage {
         [string]$Name
     )
 
-    $raw = az vm list-usage --location $AzureLocation --query "[?contains(name.value, '$NamePattern')].[name.localizedValue,currentValue,limit]" --output tsv 2>$null
-    if ($LASTEXITCODE -ne 0 -or -not $raw) {
+    $raw = & az vm list-usage --location $AzureLocation --query "[?contains(name.value, '$NamePattern')].[name.localizedValue,currentValue,limit]" --output tsv 2>$null
+    $exitCode = $LASTEXITCODE
+
+    if ($exitCode -ne 0 -or -not $raw) {
         [pscustomobject]@{ Cloud = "Azure"; Name = $Name; Usage = "unknown"; Limit = "unknown"; Location = $AzureLocation }
         return
     }
