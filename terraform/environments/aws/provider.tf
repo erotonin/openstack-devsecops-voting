@@ -1,30 +1,34 @@
 terraform {
-    required_providers {
-        aws = {
-            source = "hashicorp/aws"
-            version = "~> 5.0"
-        }
-        helm = {
-            source  = "hashicorp/helm"
-            version = "~> 2.12"
-        }
-        kubernetes = {
-            source  = "hashicorp/kubernetes"
-            version = "~> 2.24"
-        }
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
     }
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 2.12"
+    }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.24"
+    }
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 4.0"
+    }
+  }
 
-    backend "s3" {
-        bucket         = "devsecops-voting-tfstate-erotonin"
-        key            = "aws/terraform.tfstate"
-        region         = "us-east-1"
-        dynamodb_table = "devsecops-voting-terraform-locks"
-        encrypt        = true
-    }
+  backend "s3" {
+    bucket         = "devsecops-voting-tfstate-erotonin"
+    key            = "aws/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "devsecops-voting-terraform-locks"
+    encrypt        = true
+  }
 }
 
 provider "aws" {
-    region = var.aws_region
+  region = var.aws_region
 }
 
 provider "helm" {

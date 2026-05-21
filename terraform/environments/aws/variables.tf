@@ -13,6 +13,12 @@ variable "node_instance_type" {
   description = "EC2 instance type for EKS worker nodes"
 }
 
+variable "node_instance_types" {
+  type        = list(string)
+  default     = ["t3.medium", "t3a.medium"]
+  description = "EC2 instance types for EKS worker nodes"
+}
+
 variable "node_desired_size" {
   default     = 2
   description = "Desired number of worker nodes"
@@ -48,6 +54,12 @@ variable "private_subnets" {
   type        = list(string)
   default     = ["10.0.11.0/24", "10.0.12.0/24"]
   description = "List of private subnet CIDR blocks"
+}
+
+variable "database_subnets" {
+  type        = list(string)
+  default     = ["10.0.21.0/24", "10.0.22.0/24"]
+  description = "List of isolated database subnet CIDR blocks"
 }
 
 variable "ecr_repo_names" {

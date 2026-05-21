@@ -11,6 +11,14 @@ variable "vnet_cidr" {
   default     = "10.1.0.0/16"
 }
 
-variable "subnet_cidr" {
+variable "aks_subnet_cidr" {
   default = "10.1.1.0/24"
+}
+
+variable "gateway_subnet_cidr" {
+  default = "10.1.255.0/27"
+}
+
+variable "aws_vpc_cidr" {
+  default = "10.0.0.0/16"
 }

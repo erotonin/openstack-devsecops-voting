@@ -8,6 +8,11 @@ output "cluster_name" {
   description = "EKS Cluster name"
 }
 
+output "aws_region" {
+  value       = var.aws_region
+  description = "AWS region"
+}
+
 output "ecr_repository_urls" {
   value       = module.ecr.repository_urls
   description = "ECR Repository URLs"

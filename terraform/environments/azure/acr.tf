@@ -6,7 +6,7 @@ resource "random_string" "acr_suffix" {
 
 resource "azurerm_container_registry" "acr" {
   name                = "devsecopsvotingacr${random_string.acr_suffix.result}"
-  resource_group_name = module.azure_networking.rg_name
+  resource_group_name = module.azure_networking.resource_group_name
   location            = var.location
   sku                 = "Basic"
   admin_enabled       = false
