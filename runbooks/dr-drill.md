@@ -30,7 +30,7 @@ Confirm:
 Run:
 
 ```powershell
-.\scripts\dr-failover.ps1 -UserNodeCount 2
+.\scripts\dr-failover.ps1 -UserNodeCount 1
 ```
 
 The script:
@@ -46,7 +46,7 @@ The script:
 For a local UI check:
 
 ```powershell
-.\scripts\dr-failover.ps1 -UserNodeCount 2 -OpenPortForward
+.\scripts\dr-failover.ps1 -UserNodeCount 1 -OpenPortForward
 ```
 
 Then open:

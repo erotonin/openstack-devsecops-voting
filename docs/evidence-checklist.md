@@ -50,6 +50,7 @@ Use this checklist while recording the final demo and writing the report.
 - Backup/seed timestamp used for RPO.
 - Azure vote UI working.
 - DNS/endpoint switch evidence.
+- Azure for Students note: use one AKS user node unless quota is increased.
 
 ## Destroy
 

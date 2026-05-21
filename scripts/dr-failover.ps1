@@ -1,6 +1,6 @@
 param(
     [string]$AzureEnv = "terraform/environments/azure",
-    [int]$UserNodeCount = 2,
+    [int]$UserNodeCount = 1,
     [string]$Namespace = "voting",
     [switch]$SkipScale,
     [switch]$OpenPortForward
