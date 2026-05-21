@@ -1,99 +1,366 @@
+resource "kubernetes_namespace" "voting" {
+  metadata {
+    name = "voting"
+    labels = {
+      "pod-security.kubernetes.io/enforce" = "restricted"
+      "pod-security.kubernetes.io/audit"   = "restricted"
+      "pod-security.kubernetes.io/warn"    = "restricted"
+    }
+  }
+
+  depends_on = [module.eks]
+}
+
 resource "helm_release" "argocd" {
   name             = "argocd"
   repository       = "https://argoproj.github.io/argo-helm"
   chart            = "argo-cd"
   namespace        = "argocd"
   create_namespace = true
-  version          = "5.46.7"
+  version          = "7.7.16"
 
-  set {
-    name  = "server.service.type"
-    value = "LoadBalancer"
-  }
-
-  set {
-    name  = "configs.secret.argocdServerAdminPassword"
-    value = "$2b$10$wVFYNYEFx8ukoQAkG1MuoecZwKFUiMSVNZPCBEUhSnOrxT1LrU3Sm"
-  }
+  values = [
+    yamlencode({
+      global = {
+        domain = var.argocd_domain
+      }
+      server = {
+        service = {
+          type = "ClusterIP"
+        }
+        replicas = 2
+        ingress = {
+          enabled = false
+        }
+      }
+      controller = {
+        replicas = 1
+      }
+      repoServer = {
+        replicas = 2
+      }
+      applicationSet = {
+        replicas = 2
+      }
+      configs = {
+        cm = {
+          "admin.enabled" = "true"
+        }
+        rbac = {
+          "policy.default" = "role:readonly"
+          "policy.csv"     = "g, devsecops-admins, role:admin\ng, devsecops-developers, role:readonly"
+        }
+      }
+    })
+  ]
 
   depends_on = [module.eks]
 }
 
-resource "helm_release" "sonarqube" {
-  name             = "sonarqube"
-  repository       = "https://SonarSource.github.io/helm-chart-sonarqube"
-  chart            = "sonarqube"
-  namespace        = "sonarqube"
+resource "helm_release" "external_secrets" {
+  name             = "external-secrets"
+  repository       = "https://charts.external-secrets.io"
+  chart            = "external-secrets"
+  namespace        = "external-secrets"
   create_namespace = true
+  version          = "0.10.5"
 
-  set {
-    name  = "community.enabled"
-    value = "true"
-  }
-
-  set {
-    name  = "service.type"
-    value = "LoadBalancer"
-  }
-
-  set {
-    name  = "monitoringPasscode"
-    value = "define_it"
-  }
+  values = [
+    yamlencode({
+      installCRDs = true
+      serviceAccount = {
+        create = true
+        name   = "external-secrets"
+      }
+    })
+  ]
 
   depends_on = [module.eks]
 }
 
-resource "time_sleep" "wait_for_argocd" {
-  depends_on      = [helm_release.argocd]
-  create_duration = "30s"
+resource "helm_release" "gatekeeper" {
+  name             = "gatekeeper"
+  repository       = "https://open-policy-agent.github.io/gatekeeper/charts"
+  chart            = "gatekeeper"
+  namespace        = "gatekeeper-system"
+  create_namespace = true
+  version          = "3.17.1"
+
+  values = [
+    yamlencode({
+      replicas = 2
+      audit = {
+        enabled = true
+      }
+    })
+  ]
+
+  depends_on = [module.eks]
 }
 
-resource "null_resource" "argocd_app" {
-  depends_on = [time_sleep.wait_for_argocd]
+resource "helm_release" "policy_controller" {
+  count            = var.enable_image_signature_policy ? 1 : 0
+  name             = "policy-controller"
+  repository       = "https://sigstore.github.io/helm-charts"
+  chart            = "policy-controller"
+  namespace        = "cosign-system"
+  create_namespace = true
+  version          = "0.10.3"
 
-  triggers = {
-    region            = var.aws_region
-    cluster_name      = var.cluster_name
-    argocd_app_hash   = filemd5("${path.module}/../../k8s/argocd-app.yaml")
-    argocd_azure_hash = filemd5("${path.module}/../../k8s/argocd-app-azure.yaml")
-  }
-
-  provisioner "local-exec" {
-    command = <<EOT
-      aws eks update-kubeconfig --region ${var.aws_region} --name ${var.cluster_name}
-      kubectl apply -f ../../k8s/argocd-app.yaml
-      kubectl apply -f ../../k8s/argocd-app-azure.yaml
-    EOT
-  }
-
-  provisioner "local-exec" {
-    when    = destroy
-    command = <<EOT
-      aws eks update-kubeconfig --region ${self.triggers.region} --name ${self.triggers.cluster_name}
-      kubectl delete -f ../../k8s/argocd-app.yaml --ignore-not-found=true
-      kubectl delete -f ../../k8s/argocd-app-azure.yaml --ignore-not-found=true
-      sleep 20
-    EOT
-  }
+  depends_on = [module.eks]
 }
 
-resource "helm_release" "prometheus" {
-  name             = "prometheus"
+resource "helm_release" "kube_prometheus_stack" {
+  count            = var.enable_observability ? 1 : 0
+  name             = "kube-prometheus-stack"
   repository       = "https://prometheus-community.github.io/helm-charts"
   chart            = "kube-prometheus-stack"
   namespace        = "monitoring"
   create_namespace = true
+  version          = "66.2.1"
 
-  set {
-    name  = "grafana.service.type"
-    value = "LoadBalancer"
-  }
-
-  set {
-    name  = "grafana.adminPassword"
-    value = "admin123"
-  }
+  values = [
+    yamlencode({
+      grafana = {
+        service = {
+          type = "ClusterIP"
+        }
+      }
+      prometheus = {
+        prometheusSpec = {
+          retention = "15d"
+        }
+      }
+      alertmanager = {
+        alertmanagerSpec = {
+          replicas = 2
+        }
+      }
+    })
+  ]
 
   depends_on = [module.eks]
+}
+
+resource "helm_release" "loki" {
+  count            = var.enable_observability ? 1 : 0
+  name             = "loki"
+  repository       = "https://grafana.github.io/helm-charts"
+  chart            = "loki"
+  namespace        = "logging"
+  create_namespace = true
+  version          = "6.23.0"
+
+  values = [
+    yamlencode({
+      deploymentMode = "SingleBinary"
+      loki = {
+        auth_enabled = false
+        commonConfig = {
+          replication_factor = 1
+        }
+        storage = {
+          type = "filesystem"
+        }
+      }
+      singleBinary = {
+        replicas = 1
+      }
+      read = {
+        replicas = 0
+      }
+      write = {
+        replicas = 0
+      }
+      backend = {
+        replicas = 0
+      }
+    })
+  ]
+
+  depends_on = [module.eks]
+}
+
+resource "helm_release" "promtail" {
+  count            = var.enable_observability ? 1 : 0
+  name             = "promtail"
+  repository       = "https://grafana.github.io/helm-charts"
+  chart            = "promtail"
+  namespace        = "logging"
+  create_namespace = true
+  version          = "6.16.6"
+
+  values = [
+    yamlencode({
+      config = {
+        clients = [
+          {
+            url = "http://loki-gateway.logging.svc.cluster.local/loki/api/v1/push"
+          }
+        ]
+      }
+    })
+  ]
+
+  depends_on = [helm_release.loki]
+}
+
+resource "helm_release" "falco" {
+  count            = var.enable_runtime_security ? 1 : 0
+  name             = "falco"
+  repository       = "https://falcosecurity.github.io/charts"
+  chart            = "falco"
+  namespace        = "falco"
+  create_namespace = true
+  version          = "4.17.1"
+
+  values = [
+    yamlencode({
+      falcosidekick = {
+        enabled = true
+        config = {
+          webhook = {
+            address = var.falco_webhook_url
+          }
+        }
+      }
+      customRules = {
+        "voting-runtime-rules.yaml" = <<-EOT
+        - rule: Shell Spawned In Voting Namespace
+          desc: Detect shell spawned inside a voting namespace container
+          condition: spawned_process and container and k8s.ns.name = "voting" and proc.name in (bash, sh, zsh, ash)
+          output: Shell spawned in voting namespace (user=%user.name command=%proc.cmdline pod=%k8s.pod.name container=%container.name)
+          priority: WARNING
+          tags: [runtime, voting]
+        EOT
+      }
+    })
+  ]
+
+  depends_on = [module.eks]
+}
+
+resource "kubernetes_manifest" "argocd_project_voting" {
+  manifest = {
+    apiVersion = "argoproj.io/v1alpha1"
+    kind       = "AppProject"
+    metadata = {
+      name      = "voting"
+      namespace = "argocd"
+    }
+    spec = {
+      description = "Voting application project"
+      sourceRepos = [
+        var.gitops_repo_url
+      ]
+      destinations = [
+        {
+          namespace = "voting"
+          server    = "https://kubernetes.default.svc"
+        },
+        {
+          namespace = "voting"
+          name      = "devsecops-voting-aks"
+        }
+      ]
+      clusterResourceWhitelist = [
+        {
+          group = ""
+          kind  = "Namespace"
+        }
+      ]
+      namespaceResourceWhitelist = [
+        {
+          group = "*"
+          kind  = "*"
+        }
+      ]
+    }
+  }
+
+  depends_on = [helm_release.argocd]
+}
+
+resource "kubernetes_manifest" "argocd_app_aws" {
+  manifest = {
+    apiVersion = "argoproj.io/v1alpha1"
+    kind       = "Application"
+    metadata = {
+      name      = "voting-aws"
+      namespace = "argocd"
+      finalizers = [
+        "resources-finalizer.argocd.argoproj.io"
+      ]
+    }
+    spec = {
+      project = "voting"
+      source = {
+        repoURL        = var.gitops_repo_url
+        targetRevision = var.gitops_target_revision
+        path           = "k8s"
+        helm = {
+          valueFiles = ["values-prod.yaml"]
+        }
+      }
+      destination = {
+        server    = "https://kubernetes.default.svc"
+        namespace = "voting"
+      }
+      syncPolicy = {
+        automated = {
+          prune    = true
+          selfHeal = true
+        }
+        syncOptions = [
+          "CreateNamespace=true"
+        ]
+      }
+    }
+  }
+
+  depends_on = [
+    helm_release.argocd,
+    kubernetes_manifest.argocd_project_voting,
+    kubernetes_namespace.voting,
+  ]
+}
+
+resource "kubernetes_manifest" "argocd_app_azure" {
+  manifest = {
+    apiVersion = "argoproj.io/v1alpha1"
+    kind       = "Application"
+    metadata = {
+      name      = "voting-azure-standby"
+      namespace = "argocd"
+      finalizers = [
+        "resources-finalizer.argocd.argoproj.io"
+      ]
+    }
+    spec = {
+      project = "voting"
+      source = {
+        repoURL        = var.gitops_repo_url
+        targetRevision = var.gitops_target_revision
+        path           = "k8s"
+        helm = {
+          valueFiles = ["values-azure.yaml"]
+        }
+      }
+      destination = {
+        name      = "devsecops-voting-aks"
+        namespace = "voting"
+      }
+      syncPolicy = {
+        syncOptions = [
+          "CreateNamespace=true"
+        ]
+      }
+    }
+  }
+
+  depends_on = [
+    helm_release.argocd,
+    kubernetes_manifest.argocd_project_voting,
+    kubernetes_secret.aks_cluster,
+  ]
 }

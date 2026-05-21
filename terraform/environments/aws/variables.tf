@@ -30,7 +30,7 @@ variable "node_max_size" {
 }
 
 variable "node_min_size" {
-  default     = 1
+  default     = 2
   description = "Minimum number of worker nodes"
 }
 
@@ -66,4 +66,46 @@ variable "ecr_repo_names" {
   type        = list(string)
   default     = ["voting-app-vote", "voting-app-result", "voting-app-worker"]
   description = "List of ECR repository names to create"
+}
+
+variable "gitops_repo_url" {
+  type        = string
+  default     = "https://github.com/erotonin/devsecops-voting.git"
+  description = "Git repository URL used by ArgoCD"
+}
+
+variable "gitops_target_revision" {
+  type        = string
+  default     = "main"
+  description = "Git revision tracked by ArgoCD"
+}
+
+variable "argocd_domain" {
+  type        = string
+  default     = "argocd.local"
+  description = "ArgoCD external domain, used when ingress is enabled"
+}
+
+variable "enable_observability" {
+  type        = bool
+  default     = true
+  description = "Install Prometheus/Grafana and Loki/Promtail"
+}
+
+variable "enable_runtime_security" {
+  type        = bool
+  default     = true
+  description = "Install Falco runtime detection stack"
+}
+
+variable "enable_image_signature_policy" {
+  type        = bool
+  default     = true
+  description = "Install Sigstore policy-controller for image signature policy"
+}
+
+variable "falco_webhook_url" {
+  type        = string
+  default     = ""
+  description = "Optional Falcosidekick webhook URL for alert forwarding"
 }
