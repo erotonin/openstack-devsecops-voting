@@ -76,6 +76,45 @@ function Invoke-TerraformApply {
     }
 }
 
+function Remove-FailedEksNodeGroup {
+    param(
+        [string]$ClusterName,
+        [string]$NodeGroupName,
+        [string]$Region
+    )
+
+    $status = aws eks describe-nodegroup `
+        --cluster-name $ClusterName `
+        --nodegroup-name $NodeGroupName `
+        --region $Region `
+        --query "nodegroup.status" `
+        --output text 2>$null
+
+    if ($LASTEXITCODE -ne 0 -or -not $status) {
+        return
+    }
+
+    if ($status -ne "CREATE_FAILED") {
+        Write-Host "EKS node group $NodeGroupName status is $status; no cleanup needed."
+        return
+    }
+
+    Write-Step "Deleting failed EKS node group $NodeGroupName before retry"
+    Invoke-Native {
+        aws eks delete-nodegroup `
+            --cluster-name $ClusterName `
+            --nodegroup-name $NodeGroupName `
+            --region $Region
+    } "Failed to request failed EKS node group deletion"
+
+    Invoke-Native {
+        aws eks wait nodegroup-deleted `
+            --cluster-name $ClusterName `
+            --nodegroup-name $NodeGroupName `
+            --region $Region
+    } "Failed while waiting for failed EKS node group deletion"
+}
+
 Write-Step "Checking local prerequisites"
 @("terraform", "aws", "az", "kubectl", "helm") | ForEach-Object { Assert-Command $_ }
 
@@ -91,6 +130,8 @@ Invoke-TerraformApply -Path $AzureEnv -Label "Azure VPN gateway bootstrap" -Targ
     "azurerm_public_ip.vpn_ip",
     "azurerm_virtual_network_gateway.vng"
 )
+
+Remove-FailedEksNodeGroup -ClusterName "voting-app-cluster" -NodeGroupName "voting-app-cluster-ng" -Region "us-east-1"
 
 Invoke-TerraformApply -Path $AwsEnv -Label "AWS primary foundation" -Targets @(
     "module.networking",

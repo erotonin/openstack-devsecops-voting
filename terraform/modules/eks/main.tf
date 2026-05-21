@@ -80,18 +80,38 @@ resource "aws_kms_key" "ebs" {
         Resource  = "*"
       },
       {
-        Sid       = "AllowEC2ServiceForEBSEncryption"
-        Effect    = "Allow"
-        Principal = { Service = "ec2.amazonaws.com" }
+        Sid    = "AllowEKSNodeVolumeEncryption"
+        Effect = "Allow"
+        Principal = {
+          AWS = [
+            aws_iam_role.eks_nodes.arn,
+            "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling"
+          ]
+        }
         Action = [
           "kms:Encrypt",
           "kms:Decrypt",
           "kms:ReEncrypt*",
           "kms:GenerateDataKey*",
-          "kms:DescribeKey",
+          "kms:DescribeKey"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "AllowAutoScalingKMSGrants"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling"
+        }
+        Action = [
           "kms:CreateGrant"
         ]
         Resource = "*"
+        Condition = {
+          Bool = {
+            "kms:GrantIsForAWSResource" = "true"
+          }
+        }
       }
     ]
   })
