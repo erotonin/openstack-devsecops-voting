@@ -10,6 +10,8 @@ This map links the project scope to the implementation files.
 | Azure warm standby | `terraform/environments/azure`, `terraform/modules/azure_networking`, `aks`, `azure_workload_identity` |
 | Route-based IPSec VPN + BGP | `terraform/environments/aws/vpn.tf`, `terraform/environments/azure/vpn.tf` |
 | Automated apply/destroy | `scripts/infra-up.ps1`, `scripts/infra-down.ps1`, `destroy.ps1` |
+| Quota pre-check | `scripts/check-quota.ps1` |
+| Post-apply verification | `scripts/verify-stack.ps1` |
 
 ## DevSecOps Pipeline
 
@@ -41,6 +43,7 @@ This map links the project scope to the implementation files.
 | --- | --- |
 | Deny unsigned image | Sigstore policy-controller baseline in `terraform/environments/aws/helm.tf` |
 | Deny latest / privileged / missing resources | `policies/gatekeeper`, `policies/conftest` |
+| Policy reject demo | `tests/policy`, `scripts/test-policy-rejects.ps1` |
 | Pod hardening | `k8s/templates/*`, namespace PSS labels |
 | Detecting | Falco rules in `terraform/environments/aws/helm.tf` |
 | Responding | `.github/workflows/runtime-incident.yml`, `runbooks/runtime-response.md`, `response/k8s/quarantine-networkpolicy.yaml` |
@@ -65,6 +68,8 @@ This map links the project scope to the implementation files.
 | Restore/seed data config | `scripts/dr-update-azure-runtime-secret.ps1` |
 | Measure RTO/RPO | `runbooks/dr-drill.md` |
 | Rollback plan | `runbooks/rollback.md`, `runbooks/dr-drill.md` |
+| DNS/endpoint switch | `runbooks/dns-failover.md` |
+| Demo evidence | `docs/evidence-checklist.md` |
 
 ## Known Limits
 
