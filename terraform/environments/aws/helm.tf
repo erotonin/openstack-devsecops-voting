@@ -71,11 +71,45 @@ resource "helm_release" "external_secrets" {
       serviceAccount = {
         create = true
         name   = "external-secrets"
+        annotations = {
+          "eks.amazonaws.com/role-arn" = module.external_secrets_irsa.role_arn
+        }
       }
     })
   ]
 
-  depends_on = [module.eks]
+  depends_on = [
+    module.eks,
+    module.external_secrets_irsa,
+  ]
+}
+
+resource "kubernetes_manifest" "aws_secret_store" {
+  manifest = {
+    apiVersion = "external-secrets.io/v1beta1"
+    kind       = "ClusterSecretStore"
+    metadata = {
+      name = "aws-secrets-manager"
+    }
+    spec = {
+      provider = {
+        aws = {
+          service = "SecretsManager"
+          region  = var.aws_region
+          auth = {
+            jwt = {
+              serviceAccountRef = {
+                name      = "external-secrets"
+                namespace = "external-secrets"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  depends_on = [helm_release.external_secrets]
 }
 
 resource "helm_release" "gatekeeper" {
@@ -267,6 +301,10 @@ resource "kubernetes_manifest" "argocd_project_voting" {
         {
           group = ""
           kind  = "Namespace"
+        },
+        {
+          group = "external-secrets.io"
+          kind  = "ClusterSecretStore"
         }
       ]
       namespaceResourceWhitelist = [
@@ -322,6 +360,7 @@ resource "kubernetes_manifest" "argocd_app_aws" {
     helm_release.argocd,
     kubernetes_manifest.argocd_project_voting,
     kubernetes_namespace.voting,
+    kubernetes_manifest.aws_secret_store,
   ]
 }
 

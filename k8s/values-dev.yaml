@@ -42,6 +42,10 @@ serviceAccounts:
 
 localDependencies:
   enabled: true
+externalSecret:
+  enabled: false
+  storeName: aws-secrets-manager
+  remoteKey: devsecops-voting/app-runtime
 
 resources:
   vote:
@@ -65,4 +69,3 @@ resources:
     limits:
       cpu: 250m
       memory: 128Mi
-

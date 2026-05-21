@@ -37,3 +37,8 @@ output "redis_secret_name" {
   value       = module.redis_secret.secret_name
   description = "AWS Secrets Manager Redis secret name"
 }
+
+output "app_runtime_secret_name" {
+  value       = module.app_runtime_secret.secret_name
+  description = "AWS Secrets Manager app runtime secret name consumed by ESO"
+}

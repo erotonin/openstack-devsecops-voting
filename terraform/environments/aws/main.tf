@@ -93,3 +93,49 @@ module "elasticache" {
   log_group_name     = aws_cloudwatch_log_group.redis.name
   tags               = local.common_tags
 }
+
+module "app_runtime_secret" {
+  source            = "../../modules/secrets"
+  name              = "${var.name_prefix}/app-runtime"
+  generate_password = false
+  secret_data = {
+    REDIS_HOST     = module.elasticache.primary_endpoint_address
+    REDIS_PORT     = tostring(module.elasticache.port)
+    REDIS_PASSWORD = module.redis_secret.password
+    REDIS_SSL      = "true"
+    DB_HOST        = module.rds.address
+    DB_PORT        = tostring(module.rds.port)
+    DB_USER        = "postgres"
+    DB_PASSWORD    = module.db_secret.password
+    DB_NAME        = module.rds.db_name
+    DB_SSL_MODE    = "Require"
+    DATABASE_URL   = "postgres://postgres:${module.db_secret.password}@${module.rds.address}:${module.rds.port}/${module.rds.db_name}?sslmode=require"
+  }
+  tags = local.common_tags
+}
+
+data "aws_iam_policy_document" "external_secrets" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "secretsmanager:GetSecretValue",
+      "secretsmanager:DescribeSecret"
+    ]
+    resources = [
+      module.app_runtime_secret.secret_arn,
+      module.db_secret.secret_arn,
+      module.redis_secret.secret_arn,
+    ]
+  }
+}
+
+module "external_secrets_irsa" {
+  source             = "../../modules/irsa"
+  role_name          = "${var.name_prefix}-external-secrets"
+  oidc_provider_arn  = module.eks.oidc_provider_arn
+  oidc_provider_url  = module.eks.oidc_provider_url
+  namespace          = "external-secrets"
+  service_account    = "external-secrets"
+  inline_policy_json = data.aws_iam_policy_document.external_secrets.json
+  tags               = local.common_tags
+}
