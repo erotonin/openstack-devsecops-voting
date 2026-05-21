@@ -238,6 +238,9 @@ resource "helm_release" "loki" {
       lokiCanary = {
         enabled = false
       }
+      test = {
+        enabled = false
+      }
       loki = {
         auth_enabled  = false
         useTestSchema = true
