@@ -21,7 +21,7 @@ variable "subnet_id" {
 variable "kubernetes_version" {
   description = "Kubernetes version"
   type        = string
-  default     = "1.30"
+  default     = "1.34"
 }
 
 variable "vm_size" {
