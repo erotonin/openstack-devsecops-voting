@@ -60,6 +60,12 @@ variable "user_max_count" {
   default     = 5
 }
 
+variable "enable_user_node_pool" {
+  description = "Create a separate user node pool for workloads"
+  type        = bool
+  default     = false
+}
+
 variable "tags" {
   description = "Common tags"
   type        = map(string)

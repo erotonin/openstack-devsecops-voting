@@ -48,11 +48,11 @@ resource "azurerm_kubernetes_cluster" "aks" {
     os_disk_type        = "Managed"
     type                = "VirtualMachineScaleSets"
 
-    # System node pool only — taint để app pod không schedule lên đây
-    only_critical_addons_enabled = true
+    # Student quota warm standby: allow app pods on the single node pool.
+    only_critical_addons_enabled = false
 
     upgrade_settings {
-      max_surge = "33%"
+      max_surge = "10%"
     }
   }
 
@@ -86,6 +86,8 @@ resource "azurerm_kubernetes_cluster" "aks" {
 
 # ── User node pool cho workload (auto-scale) ──
 resource "azurerm_kubernetes_cluster_node_pool" "user" {
+  count = var.enable_user_node_pool ? 1 : 0
+
   name                  = "user"
   kubernetes_cluster_id = azurerm_kubernetes_cluster.aks.id
   vm_size               = var.user_vm_size
@@ -97,7 +99,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "user" {
   mode                  = "User"
 
   upgrade_settings {
-    max_surge = "33%"
+    max_surge = "10%"
   }
 
   tags = local.common_tags
