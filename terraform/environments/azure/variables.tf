@@ -17,7 +17,7 @@ variable "gitops_target_revision" {
 }
 
 variable "vnet_cidr" {
-  description = "Dải IP VNet không được trùng với AWS VPC"
+  description = "Azure VNet CIDR. Must not overlap with the AWS VPC CIDR."
   default     = "10.1.0.0/16"
 }
 
@@ -38,11 +38,13 @@ variable "name_prefix" {
 }
 
 variable "azure_db_host" {
-  default = "postgres-restore-placeholder.postgres.database.azure.com"
+  description = "Azure PostgreSQL host after DR restore. Override this during the DR drill."
+  default     = "restore-required.postgres.database.azure.com"
 }
 
 variable "azure_redis_host" {
-  default = "redis-restore-placeholder.redis.cache.windows.net"
+  description = "Azure Redis host after DR restore. Override this during the DR drill."
+  default     = "restore-required.redis.cache.windows.net"
 }
 
 variable "azure_bgp_asn" {

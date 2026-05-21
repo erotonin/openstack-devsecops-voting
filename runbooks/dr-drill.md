@@ -72,6 +72,18 @@ Record:
 - Restore finish time.
 - First successful vote on Azure.
 
+After restoring or preparing the Azure data services, update the runtime secret:
+
+```powershell
+.\scripts\dr-update-azure-runtime-secret.ps1 `
+  -DbHost "<restored-postgres-host>" `
+  -DbPassword "<restored-postgres-password>" `
+  -RedisHost "<restored-redis-host>" `
+  -RedisPassword "<restored-redis-password>"
+```
+
+External Secrets Operator will sync the new Key Vault value into Kubernetes.
+
 ## Endpoint / DNS Switch
 
 For the full demo, switch traffic after Azure is healthy:
