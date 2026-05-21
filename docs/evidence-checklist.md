@@ -24,6 +24,7 @@ Use this checklist while recording the final demo and writing the report.
 - Azure ArgoCD `voting-azure` app healthy/synced.
 - ExternalSecret synced in AWS and Azure.
 - No plaintext production database password in Helm values.
+- HTTP smoke test through `scripts/check-app-http.ps1` for AWS and Azure.
 
 ## Policy
 
