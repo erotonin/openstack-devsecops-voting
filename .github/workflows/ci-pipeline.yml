@@ -139,13 +139,11 @@ jobs:
           ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
         run: |
           docker tag "${{ matrix.service }}:${IMAGE_TAG}" "${ECR_REGISTRY}/voting-app-${{ matrix.service }}:${IMAGE_TAG}"
-          docker tag "${{ matrix.service }}:${IMAGE_TAG}" "${ECR_REGISTRY}/voting-app-${{ matrix.service }}:main"
 
       - name: Tag image for ACR
         if: env.ACR_LOGIN_SERVER != ''
         run: |
           docker tag "${{ matrix.service }}:${IMAGE_TAG}" "${ACR_LOGIN_SERVER}/voting-app-${{ matrix.service }}:${IMAGE_TAG}"
-          docker tag "${{ matrix.service }}:${IMAGE_TAG}" "${ACR_LOGIN_SERVER}/voting-app-${{ matrix.service }}:main"
 
       - name: Generate SBOM
         uses: anchore/sbom-action@v0
@@ -168,13 +166,11 @@ jobs:
           ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
         run: |
           docker push "${ECR_REGISTRY}/voting-app-${{ matrix.service }}:${IMAGE_TAG}"
-          docker push "${ECR_REGISTRY}/voting-app-${{ matrix.service }}:main"
 
       - name: Push ACR image
         if: env.ACR_LOGIN_SERVER != ''
         run: |
           docker push "${ACR_LOGIN_SERVER}/voting-app-${{ matrix.service }}:${IMAGE_TAG}"
-          docker push "${ACR_LOGIN_SERVER}/voting-app-${{ matrix.service }}:main"
 
       - name: Cosign sign ECR image
         env:

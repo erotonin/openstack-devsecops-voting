@@ -59,6 +59,26 @@ function Remove-KubernetesResources {
     }
 }
 
+function Remove-EcrImages {
+    Write-Step "Cleaning ECR images before Terraform destroy"
+    $repos = @("voting-app-vote", "voting-app-result", "voting-app-worker")
+
+    foreach ($repo in $repos) {
+        $images = aws ecr list-images --repository-name $repo --query 'imageIds' --output json 2>$null
+        if ($LASTEXITCODE -ne 0 -or -not $images -or $images -eq "[]") {
+            continue
+        }
+
+        $tmp = New-TemporaryFile
+        try {
+            Set-Content -LiteralPath $tmp -Value $images
+            aws ecr batch-delete-image --repository-name $repo --image-ids "file://$tmp" | Out-Host
+        } finally {
+            Remove-Item -LiteralPath $tmp -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 Write-Step "Destroy safety check"
 Write-Host "Environment: $Environment" -ForegroundColor Yellow
 Write-Host "This will destroy the full demo infrastructure managed by Terraform." -ForegroundColor Yellow
@@ -71,10 +91,10 @@ if (-not $AutoApprove) {
 }
 
 Remove-KubernetesResources
+Remove-EcrImages
 
 Invoke-TerraformDestroy -Path $AwsEnv -Label "AWS primary"
 Invoke-TerraformDestroy -Path $AzureEnv -Label "Azure warm standby"
 
 Write-Step "Post-destroy reminder"
 Write-Host "Check for remaining cost-bearing resources: Load Balancers, NAT Gateways, EKS/AKS nodes, RDS, ElastiCache, VPN Gateways, public IPs, disks, snapshots." -ForegroundColor Green
-
