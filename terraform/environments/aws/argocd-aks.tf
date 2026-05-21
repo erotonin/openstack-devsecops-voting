@@ -9,6 +9,8 @@ data "terraform_remote_state" "azure" {
 }
 
 resource "kubernetes_secret" "aks_cluster" {
+  count = var.enable_aks_spoke_registration ? 1 : 0
+
   metadata {
     name      = "devsecops-voting-aks-secret"
     namespace = "argocd"

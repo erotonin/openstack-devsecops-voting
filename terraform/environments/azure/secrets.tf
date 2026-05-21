@@ -51,13 +51,13 @@ resource "azurerm_key_vault_secret" "app_runtime" {
 }
 
 module "external_secrets_workload_identity" {
-  source              = "../../modules/azure_workload_identity"
-  identity_name       = "${var.name_prefix}-eso"
-  location            = var.location
-  resource_group_name = module.azure_networking.resource_group_name
-  aks_oidc_issuer_url = module.aks.oidc_issuer_url
-  namespace           = "external-secrets"
-  service_account     = "external-secrets"
-  key_vault_id        = azurerm_key_vault.app.id
+  source                = "../../modules/azure_workload_identity"
+  identity_name         = "${var.name_prefix}-eso"
+  location              = var.location
+  resource_group_name   = module.azure_networking.resource_group_name
+  aks_oidc_issuer_url   = module.aks.oidc_issuer_url
+  namespace             = "external-secrets"
+  service_account       = "external-secrets"
+  key_vault_id          = azurerm_key_vault.app.id
+  assign_key_vault_role = true
 }
-

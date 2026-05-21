@@ -36,7 +36,7 @@ resource "azurerm_federated_identity_credential" "this" {
 
 # ─── Optional: cấp quyền đọc Key Vault secret ─────────────────────
 resource "azurerm_role_assignment" "kv_secrets_user" {
-  count                = var.key_vault_id != null ? 1 : 0
+  count                = var.assign_key_vault_role ? 1 : 0
   scope                = var.key_vault_id
   role_definition_name = "Key Vault Secrets User"
   principal_id         = azurerm_user_assigned_identity.this.principal_id

@@ -130,12 +130,13 @@ data "aws_iam_policy_document" "external_secrets" {
 }
 
 module "external_secrets_irsa" {
-  source             = "../../modules/irsa"
-  role_name          = "${var.name_prefix}-external-secrets"
-  oidc_provider_arn  = module.eks.oidc_provider_arn
-  oidc_provider_url  = module.eks.oidc_provider_url
-  namespace          = "external-secrets"
-  service_account    = "external-secrets"
-  inline_policy_json = data.aws_iam_policy_document.external_secrets.json
-  tags               = local.common_tags
+  source               = "../../modules/irsa"
+  role_name            = "${var.name_prefix}-external-secrets"
+  oidc_provider_arn    = module.eks.oidc_provider_arn
+  oidc_provider_url    = module.eks.oidc_provider_url
+  namespace            = "external-secrets"
+  service_account      = "external-secrets"
+  inline_policy_json   = data.aws_iam_policy_document.external_secrets.json
+  create_inline_policy = true
+  tags                 = local.common_tags
 }

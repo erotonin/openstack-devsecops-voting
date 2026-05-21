@@ -39,3 +39,9 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "assign_key_vault_role" {
+  description = "Whether to assign Key Vault Secrets User. Keep this explicit so count never depends on computed IDs."
+  type        = bool
+  default     = false
+}

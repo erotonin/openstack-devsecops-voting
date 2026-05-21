@@ -7,6 +7,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$PSNativeCommandUseErrorActionPreference = $false
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $AwsEnv = Join-Path $Root "terraform/environments/aws"
 $AzureEnv = Join-Path $Root "terraform/environments/azure"
@@ -24,6 +25,18 @@ function Assert-Command {
     }
 }
 
+function Invoke-Native {
+    param(
+        [scriptblock]$Command,
+        [string]$ErrorMessage
+    )
+
+    & $Command
+    if ($LASTEXITCODE -ne 0) {
+        throw $ErrorMessage
+    }
+}
+
 function Invoke-TerraformApply {
     param(
         [string]$Path,
@@ -34,14 +47,14 @@ function Invoke-TerraformApply {
     Push-Location $Path
     try {
         Write-Step "$Label terraform init"
-        terraform init
+        Invoke-Native { terraform init } "$Label terraform init failed"
 
         if (-not $SkipValidate) {
             Write-Step "$Label terraform fmt/check"
-            terraform fmt -check -recursive
+            Invoke-Native { terraform fmt -check -recursive } "$Label terraform fmt failed"
 
             Write-Step "$Label terraform validate"
-            terraform validate
+            Invoke-Native { terraform validate } "$Label terraform validate failed"
         }
 
         $targetArgs = @()
@@ -50,13 +63,13 @@ function Invoke-TerraformApply {
         }
 
         Write-Step "$Label terraform plan"
-        terraform plan @targetArgs -out=tfplan
+        Invoke-Native { terraform plan @targetArgs -out=tfplan } "$Label terraform plan failed"
 
         Write-Step "$Label terraform apply"
         if ($AutoApprove) {
-            terraform apply -auto-approve tfplan
+            Invoke-Native { terraform apply -auto-approve tfplan } "$Label terraform apply failed"
         } else {
-            terraform apply tfplan
+            Invoke-Native { terraform apply tfplan } "$Label terraform apply failed"
         }
     } finally {
         Pop-Location
@@ -79,10 +92,49 @@ Invoke-TerraformApply -Path $AzureEnv -Label "Azure VPN gateway bootstrap" -Targ
     "azurerm_virtual_network_gateway.vng"
 )
 
-Invoke-TerraformApply -Path $AwsEnv -Label "AWS primary"
+Invoke-TerraformApply -Path $AwsEnv -Label "AWS primary foundation" -Targets @(
+    "module.networking",
+    "module.security_groups",
+    "module.eks",
+    "module.ecr",
+    "module.db_secret",
+    "module.redis_secret",
+    "module.rds",
+    "aws_cloudwatch_log_group.redis",
+    "module.elasticache",
+    "module.app_runtime_secret",
+    "module.external_secrets_irsa",
+    "aws_iam_openid_connect_provider.github",
+    "aws_iam_role.github_actions",
+    "aws_iam_role_policy.github_actions_ecr",
+    "aws_customer_gateway.cgw",
+    "aws_vpn_gateway.vgw",
+    "aws_vpn_connection.vpn",
+    "aws_vpn_gateway_route_propagation.private"
+)
+
+Invoke-TerraformApply -Path $AwsEnv -Label "AWS primary runtime"
 
 # Finish Azure after AWS has written tunnel details to remote state.
-Invoke-TerraformApply -Path $AzureEnv -Label "Azure warm standby"
+Invoke-TerraformApply -Path $AzureEnv -Label "Azure warm standby foundation" -Targets @(
+    "module.azure_networking",
+    "azurerm_public_ip.vpn_ip",
+    "azurerm_virtual_network_gateway.vng",
+    "azurerm_local_network_gateway.lng",
+    "azurerm_virtual_network_gateway_connection.vpn_conn",
+    "module.aks",
+    "azurerm_container_registry.acr",
+    "random_string.acr_suffix",
+    "azurerm_role_assignment.aks_acr_pull",
+    "azurerm_key_vault.app",
+    "azurerm_role_assignment.current_key_vault_admin",
+    "random_password.azure_db_password",
+    "random_password.azure_redis_password",
+    "azurerm_key_vault_secret.app_runtime",
+    "module.external_secrets_workload_identity"
+)
+
+Invoke-TerraformApply -Path $AzureEnv -Label "Azure warm standby runtime"
 
 Write-Step "Updating kubeconfig files"
 Push-Location $AwsEnv
@@ -90,7 +142,7 @@ try {
     $awsRegion = terraform output -raw aws_region 2>$null
     if (-not $awsRegion) { $awsRegion = "us-east-1" }
     $eksCluster = terraform output -raw cluster_name
-    aws eks update-kubeconfig --region $awsRegion --name $eksCluster
+    Invoke-Native { aws eks update-kubeconfig --region $awsRegion --name $eksCluster } "Failed to update EKS kubeconfig"
 } finally {
     Pop-Location
 }
@@ -100,7 +152,7 @@ try {
     $rgName = terraform output -raw resource_group_name 2>$null
     $aksName = terraform output -raw aks_cluster_name 2>$null
     if ($rgName -and $aksName) {
-        az aks get-credentials --resource-group $rgName --name $aksName --overwrite-existing
+        Invoke-Native { az aks get-credentials --resource-group $rgName --name $aksName --overwrite-existing } "Failed to update AKS kubeconfig"
     }
 } finally {
     Pop-Location

@@ -29,6 +29,12 @@ variable "inline_policy_json" {
   default     = null
 }
 
+variable "create_inline_policy" {
+  description = "Whether to create the inline policy. Keep this explicit so count never depends on computed policy JSON."
+  type        = bool
+  default     = false
+}
+
 variable "managed_policy_arns" {
   description = "List managed policy ARN attach"
   type        = list(string)

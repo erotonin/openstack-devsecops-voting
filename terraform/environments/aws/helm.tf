@@ -391,6 +391,8 @@ resource "kubernetes_manifest" "argocd_app_aws" {
 }
 
 resource "kubernetes_manifest" "argocd_app_azure" {
+  count = var.enable_aks_spoke_registration ? 1 : 0
+
   manifest = {
     apiVersion = "argoproj.io/v1alpha1"
     kind       = "Application"
@@ -426,6 +428,6 @@ resource "kubernetes_manifest" "argocd_app_azure" {
   depends_on = [
     helm_release.argocd,
     kubernetes_manifest.argocd_project_voting,
-    kubernetes_secret.aks_cluster,
+    kubernetes_secret.aks_cluster[0],
   ]
 }

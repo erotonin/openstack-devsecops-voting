@@ -127,3 +127,9 @@ variable "azure_bgp_asn" {
   default     = 65000
   description = "Azure VPN Gateway BGP ASN"
 }
+
+variable "enable_aks_spoke_registration" {
+  type        = bool
+  default     = false
+  description = "Register AKS as a spoke cluster in the AWS ArgoCD hub. Disabled by default because AKS has its own standby ArgoCD."
+}
