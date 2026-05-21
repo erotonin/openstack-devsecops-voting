@@ -22,3 +22,15 @@ variable "gateway_subnet_cidr" {
 variable "aws_vpc_cidr" {
   default = "10.0.0.0/16"
 }
+
+variable "name_prefix" {
+  default = "devsecops-voting"
+}
+
+variable "azure_db_host" {
+  default = "postgres-restore-placeholder.postgres.database.azure.com"
+}
+
+variable "azure_redis_host" {
+  default = "redis-restore-placeholder.redis.cache.windows.net"
+}

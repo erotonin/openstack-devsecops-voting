@@ -22,6 +22,14 @@ output "gateway_subnet_id" {
 output "acr_login_server_from_module" {
   value = azurerm_container_registry.acr.login_server
 }
+
+output "key_vault_uri" {
+  value = azurerm_key_vault.app.vault_uri
+}
+
+output "app_runtime_secret_name" {
+  value = azurerm_key_vault_secret.app_runtime.name
+}
 output "aks_client_certificate" {
   value     = module.aks.client_certificate
   sensitive = true
