@@ -19,6 +19,30 @@ function Require-Command {
     }
 }
 
+function Invoke-NativeCapture {
+    param(
+        [scriptblock]$Command
+    )
+
+    $previousPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        $output = & $Command 2>$null
+        $exitCode = $LASTEXITCODE
+        [pscustomobject]@{
+            Output   = $output
+            ExitCode = $exitCode
+        }
+    } catch {
+        [pscustomobject]@{
+            Output   = $null
+            ExitCode = 1
+        }
+    } finally {
+        $ErrorActionPreference = $previousPreference
+    }
+}
+
 function Get-AwsQuota {
     param(
         [string]$ServiceCode,
@@ -26,19 +50,19 @@ function Get-AwsQuota {
         [string]$Name
     )
 
-    $value = & aws service-quotas get-service-quota `
-        --service-code $ServiceCode `
-        --quota-code $QuotaCode `
-        --region $AwsRegion `
-        --query "Quota.Value" `
-        --output text 2>$null
+    $result = Invoke-NativeCapture {
+        aws service-quotas get-service-quota `
+            --service-code $ServiceCode `
+            --quota-code $QuotaCode `
+            --region $AwsRegion `
+            --query "Quota.Value" `
+            --output text
+    }
 
-    $exitCode = $LASTEXITCODE
-
-    if ($exitCode -ne 0 -or -not $value) {
+    if ($result.ExitCode -ne 0 -or -not $result.Output) {
         [pscustomobject]@{ Cloud = "AWS"; Name = $Name; Limit = "unknown"; Region = $AwsRegion }
     } else {
-        [pscustomobject]@{ Cloud = "AWS"; Name = $Name; Limit = $value; Region = $AwsRegion }
+        [pscustomobject]@{ Cloud = "AWS"; Name = $Name; Limit = $result.Output; Region = $AwsRegion }
     }
 }
 
@@ -48,15 +72,16 @@ function Get-AzureUsage {
         [string]$Name
     )
 
-    $raw = & az vm list-usage --location $AzureLocation --query "[?contains(name.value, '$NamePattern')].[name.localizedValue,currentValue,limit]" --output tsv 2>$null
-    $exitCode = $LASTEXITCODE
+    $result = Invoke-NativeCapture {
+        az vm list-usage --location $AzureLocation --query "[?contains(name.value, '$NamePattern')].[name.localizedValue,currentValue,limit]" --output tsv
+    }
 
-    if ($exitCode -ne 0 -or -not $raw) {
+    if ($result.ExitCode -ne 0 -or -not $result.Output) {
         [pscustomobject]@{ Cloud = "Azure"; Name = $Name; Usage = "unknown"; Limit = "unknown"; Location = $AzureLocation }
         return
     }
 
-    $raw -split "`n" | ForEach-Object {
+    $result.Output -split "`n" | ForEach-Object {
         $parts = $_ -split "`t"
         [pscustomobject]@{
             Cloud    = "Azure"
