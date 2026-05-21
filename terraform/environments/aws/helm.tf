@@ -256,6 +256,18 @@ resource "helm_release" "loki" {
         persistence = {
           enabled = false
         }
+        extraVolumes = [
+          {
+            name     = "loki-data"
+            emptyDir = {}
+          }
+        ]
+        extraVolumeMounts = [
+          {
+            name      = "loki-data"
+            mountPath = "/var/loki"
+          }
+        ]
       }
       read = {
         replicas = 0
