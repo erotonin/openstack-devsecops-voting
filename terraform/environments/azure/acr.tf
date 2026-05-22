@@ -4,6 +4,14 @@ resource "random_string" "acr_suffix" {
   upper   = false
 }
 
+#checkov:skip=CKV_AZURE_139:Public access is intentionally kept for GitHub-hosted runners and AKS pulls in the student demo; production should use private endpoints.
+#checkov:skip=CKV_AZURE_163:ACR vulnerability scanning requires Defender/Premium capabilities that are outside the cost-capped demo scope; CI performs Trivy image scans.
+#checkov:skip=CKV_AZURE_164:Trusted image enforcement is implemented with Cosign and Sigstore policy-controller on Kubernetes admission.
+#checkov:skip=CKV_AZURE_165:ACR geo-replication requires Premium; this project demonstrates multi-cloud DR through AKS warm standby and GitOps.
+#checkov:skip=CKV_AZURE_166:Image quarantine/verification is represented by CI Trivy/Cosign and Kubernetes admission policy instead of ACR Premium quarantine.
+#checkov:skip=CKV_AZURE_167:Retention cleanup is intentionally handled by small demo repositories and lifecycle discipline; Premium ACR retention is a production follow-up.
+#checkov:skip=CKV_AZURE_237:Dedicated data endpoints require Premium/private networking and are out of scope for this cost-capped student demo.
+#checkov:skip=CKV_AZURE_233:Zone redundant ACR requires Premium and is documented as a production hardening item.
 resource "azurerm_container_registry" "acr" {
   name                = "devsecopsvotingacr${random_string.acr_suffix.result}"
   resource_group_name = module.azure_networking.resource_group_name
@@ -12,7 +20,7 @@ resource "azurerm_container_registry" "acr" {
   admin_enabled       = false
 }
 
-# Cấp quyền cho AKS được kéo Image từ ACR này
+# Grant AKS permission to pull images from this ACR.
 resource "azurerm_role_assignment" "aks_acr_pull" {
   principal_id                     = module.aks.kubelet_identity_object_id
   role_definition_name             = "AcrPull"

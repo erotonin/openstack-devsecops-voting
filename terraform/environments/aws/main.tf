@@ -6,6 +6,9 @@ locals {
   }
 }
 
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
 module "networking" {
   source           = "../../modules/networking"
   name_prefix      = var.name_prefix
@@ -78,9 +81,57 @@ module "rds" {
   tags                = local.common_tags
 }
 
+resource "aws_kms_key" "redis_logs" {
+  description         = "KMS key for Redis CloudWatch log group encryption"
+  enable_key_rotation = true
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "EnableIAMUserPermissions"
+        Effect    = "Allow"
+        Principal = { AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root" }
+        Action    = "kms:*"
+        Resource  = "*"
+      },
+      {
+        Sid    = "AllowCloudWatchLogs"
+        Effect = "Allow"
+        Principal = {
+          Service = "logs.${data.aws_region.current.name}.amazonaws.com"
+        }
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey",
+        ]
+        Resource = "*"
+        Condition = {
+          ArnEquals = {
+            "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/elasticache/${var.name_prefix}-redis"
+          }
+        }
+      },
+    ]
+  })
+
+  tags = merge(local.common_tags, {
+    Name = "${var.name_prefix}-redis-logs-kms"
+  })
+}
+
+resource "aws_kms_alias" "redis_logs" {
+  name          = "alias/${var.name_prefix}-redis-logs"
+  target_key_id = aws_kms_key.redis_logs.key_id
+}
+
 resource "aws_cloudwatch_log_group" "redis" {
   name              = "/aws/elasticache/${var.name_prefix}-redis"
-  retention_in_days = 30
+  retention_in_days = 365
+  kms_key_id        = aws_kms_key.redis_logs.arn
   tags              = local.common_tags
 }
 
