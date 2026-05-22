@@ -16,6 +16,7 @@ Use this checklist while recording the final demo and writing the report.
 - Runtime incident workflow succeeded and created issue #27:
   https://github.com/erotonin/devsecops-voting/issues/27
 - Sigstore Policy Controller enforces keyless GitHub Actions signatures for AWS ECR voting app images.
+- Admission reject tests passed for unsafe policy fixtures.
 - Checkov and tfsec currently run as report-only baseline scans. Trivy, Semgrep, Gitleaks, Helm, and Conftest remain blocking PR gates.
 - Detailed evidence is recorded in `docs/demo-evidence-2026-05-22.md`.
 

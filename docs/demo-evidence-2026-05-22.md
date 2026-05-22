@@ -95,6 +95,20 @@ Verified enforcement state:
 
 The policy matches the three ECR application repositories and verifies keyless GitHub Actions signatures issued by Fulcio.
 
+## Admission Policy Reject Tests
+
+Gatekeeper reject test command succeeded:
+
+```powershell
+.\scripts\test-policy-rejects.ps1 -Context arn:aws:eks:us-east-1:800557027783:cluster/voting-app-cluster
+```
+
+Verified denials:
+
+- `deny-latest.yaml` denied as expected. After Sigstore namespace opt-in, this request is denied by policy-controller before Gatekeeper because `nginx:latest` does not match the signed ECR image policy.
+- `deny-privileged.yaml` denied by Gatekeeper.
+- `deny-missing-resources.yaml` denied by Gatekeeper.
+
 ## Current Gate Policy
 
 Blocking PR gates:
