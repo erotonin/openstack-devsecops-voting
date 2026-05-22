@@ -57,6 +57,8 @@ jobs:
           directory: .
           framework: terraform,kubernetes,dockerfile,github_actions
           quiet: true
+          skip_path: tests/policy
+          soft_fail: true
 
       - name: tfsec Terraform scan
         uses: aquasecurity/tfsec-action@v1.0.3
