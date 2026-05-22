@@ -2,6 +2,18 @@
 
 Use this checklist while recording the final demo and writing the report.
 
+## Current Verified Evidence
+
+- Main CI/CD succeeded after the latest dependency PR merge: https://github.com/erotonin/devsecops-voting/actions/runs/26268048524
+- Manual OWASP ZAP DAST succeeded against AWS staging: https://github.com/erotonin/devsecops-voting/actions/runs/26267394350
+- Branch protection is enabled on `main` with PR review and required status check `PR security gates`.
+- GitHub repository configuration script completed successfully: `scripts/configure-github-repo.ps1`.
+- AWS ArgoCD app `voting-aws` is `Synced Healthy`.
+- Azure ArgoCD app `voting-azure` is `Synced Healthy`.
+- AWS public staging vote endpoint returned HTTP 200:
+  `http://a4bdf43777192482cb1c20c79adafff8-2084416586.us-east-1.elb.amazonaws.com`
+- Checkov and tfsec currently run as report-only baseline scans. Trivy, Semgrep, Gitleaks, Helm, and Conftest remain blocking PR gates.
+
 ## Infrastructure
 
 - Terraform apply output for AWS and Azure.
