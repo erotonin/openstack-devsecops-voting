@@ -42,7 +42,7 @@ This map links the project scope to the implementation files.
 | Requirement | Implementation |
 | --- | --- |
 | Signed image artifacts | Cosign keyless signing in `.github/workflows/ci-pipeline.yml` |
-| Unsigned image enforcement baseline | Sigstore policy-controller installed in `terraform/environments/aws/helm.tf`; ClusterImagePolicy enforcement is a follow-up once all demo images are signed by CI |
+| Unsigned image enforcement | Sigstore policy-controller installed in `terraform/environments/aws/helm.tf`; `policies/sigstore/clusterimagepolicy-ecr-keyless.yaml`; `scripts/apply-sigstore-policy.ps1` |
 | Deny latest / privileged / missing resources | `policies/gatekeeper`, `scripts/apply-gatekeeper-policies.ps1`, `policies/conftest` |
 | Policy reject demo | `tests/policy`, `scripts/test-policy-rejects.ps1` |
 | Pod hardening | `k8s/templates/*`, namespace PSS labels |

@@ -1,0 +1,16 @@
+apiVersion: policy.sigstore.dev/v1alpha1
+kind: ClusterImagePolicy
+metadata:
+  name: voting-ecr-keyless-github-actions
+spec:
+  images:
+    - glob: "800557027783.dkr.ecr.us-east-1.amazonaws.com/voting-app-vote**"
+    - glob: "800557027783.dkr.ecr.us-east-1.amazonaws.com/voting-app-result**"
+    - glob: "800557027783.dkr.ecr.us-east-1.amazonaws.com/voting-app-worker**"
+  authorities:
+    - name: github-actions-keyless
+      keyless:
+        url: https://fulcio.sigstore.dev
+        identities:
+          - issuer: https://token.actions.githubusercontent.com
+            subjectRegExp: "^https://github.com/erotonin/devsecops-voting/.github/workflows/ci-pipeline.yml@refs/heads/main$"

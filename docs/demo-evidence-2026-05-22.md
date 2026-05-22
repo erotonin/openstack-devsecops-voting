@@ -78,6 +78,23 @@ Response model:
 - default: alert and human triage
 - optional demo: scoped quarantine using `response/k8s/quarantine-networkpolicy.yaml`
 
+## Signed Image Enforcement
+
+Sigstore Policy Controller is installed in the AWS primary cluster.
+
+Verified enforcement state:
+
+- CRD exists: `clusterimagepolicies.policy.sigstore.dev`
+- Policy exists: `voting-ecr-keyless-github-actions`
+- Policy mode: `enforce`
+- Policy status: `Ready`
+- Namespace opt-in label:
+  `policy.sigstore.dev/include=true`
+- Signed image admission smoke test passed through:
+  `scripts/apply-sigstore-policy.ps1 -Apply`
+
+The policy matches the three ECR application repositories and verifies keyless GitHub Actions signatures issued by Fulcio.
+
 ## Current Gate Policy
 
 Blocking PR gates:

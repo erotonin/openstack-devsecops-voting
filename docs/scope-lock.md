@@ -43,8 +43,8 @@ feature branch
 - Cosign image signing.
 - OWASP ZAP DAST.
 - Conftest and Gatekeeper policy checks.
-- Cosign signing in CI, with Policy Controller installed as the cluster-side verification baseline.
-- Strict unsigned-image enforcement is enabled only after the demo images are signed and promoted through CI, otherwise it would block the current manually built student-demo images.
+- Cosign signing in CI, with Policy Controller enforcing keyless GitHub Actions signatures for AWS ECR voting app images.
+- Strict unsigned-image enforcement is scoped to the voting app ECR repositories and the `voting` namespace.
 
 ## Runtime Operations
 
