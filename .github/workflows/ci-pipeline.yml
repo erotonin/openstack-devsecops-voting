@@ -162,24 +162,30 @@ jobs:
         uses: sigstore/cosign-installer@v3
 
       - name: Push ECR image
+        id: push_ecr
         env:
           ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
         run: |
-          docker push "${ECR_REGISTRY}/voting-app-${{ matrix.service }}:${IMAGE_TAG}"
+          image="${ECR_REGISTRY}/voting-app-${{ matrix.service }}:${IMAGE_TAG}"
+          docker push "$image"
+          digest="$(docker inspect --format='{{index .RepoDigests 0}}' "$image" | cut -d'@' -f2)"
+          echo "image_digest=${ECR_REGISTRY}/voting-app-${{ matrix.service }}@${digest}" >> "$GITHUB_OUTPUT"
 
       - name: Push ACR image
+        id: push_acr
         if: env.ACR_LOGIN_SERVER != ''
         run: |
-          docker push "${ACR_LOGIN_SERVER}/voting-app-${{ matrix.service }}:${IMAGE_TAG}"
+          image="${ACR_LOGIN_SERVER}/voting-app-${{ matrix.service }}:${IMAGE_TAG}"
+          docker push "$image"
+          digest="$(docker inspect --format='{{index .RepoDigests 0}}' "$image" | cut -d'@' -f2)"
+          echo "image_digest=${ACR_LOGIN_SERVER}/voting-app-${{ matrix.service }}@${digest}" >> "$GITHUB_OUTPUT"
 
       - name: Cosign sign ECR image
-        env:
-          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
-        run: cosign sign --yes "${ECR_REGISTRY}/voting-app-${{ matrix.service }}:${IMAGE_TAG}"
+        run: cosign sign --yes "${{ steps.push_ecr.outputs.image_digest }}"
 
       - name: Cosign sign ACR image
         if: env.ACR_LOGIN_SERVER != ''
-        run: cosign sign --yes "${ACR_LOGIN_SERVER}/voting-app-${{ matrix.service }}:${IMAGE_TAG}"
+        run: cosign sign --yes "${{ steps.push_acr.outputs.image_digest }}"
 
   dast-staging:
     name: DAST staging
