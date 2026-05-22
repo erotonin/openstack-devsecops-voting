@@ -13,13 +13,13 @@ ingress:
 images:
   vote:
     repository: 800557027783.dkr.ecr.us-east-1.amazonaws.com/voting-app-vote
-    tag: c858f7d60a063c5ad076915c706e33c48fb2decd
+    tag: 7dbbf9ad93834c049b63ec95163e2963601db02c
   result:
     repository: 800557027783.dkr.ecr.us-east-1.amazonaws.com/voting-app-result
-    tag: c858f7d60a063c5ad076915c706e33c48fb2decd
+    tag: 7dbbf9ad93834c049b63ec95163e2963601db02c
   worker:
     repository: 800557027783.dkr.ecr.us-east-1.amazonaws.com/voting-app-worker
-    tag: c858f7d60a063c5ad076915c706e33c48fb2decd
+    tag: 7dbbf9ad93834c049b63ec95163e2963601db02c
   redis:
     repository: redis
     tag: 7-alpine

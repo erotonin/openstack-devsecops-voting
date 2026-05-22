@@ -13,13 +13,13 @@ ingress:
 images:
   vote:
     repository: devsecopsvotingacr7jg8dl.azurecr.io/voting-app-vote
-    tag: c858f7d60a063c5ad076915c706e33c48fb2decd
+    tag: 7dbbf9ad93834c049b63ec95163e2963601db02c
   result:
     repository: devsecopsvotingacr7jg8dl.azurecr.io/voting-app-result
-    tag: c858f7d60a063c5ad076915c706e33c48fb2decd
+    tag: 7dbbf9ad93834c049b63ec95163e2963601db02c
   worker:
     repository: devsecopsvotingacr7jg8dl.azurecr.io/voting-app-worker
-    tag: c858f7d60a063c5ad076915c706e33c48fb2decd
+    tag: 7dbbf9ad93834c049b63ec95163e2963601db02c
   redis:
     repository: redis
     tag: 7-alpine
