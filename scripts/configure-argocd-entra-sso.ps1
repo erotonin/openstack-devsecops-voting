@@ -53,9 +53,28 @@ $app = az ad app create `
     --query "{appId:appId,id:id}" `
     -o json | ConvertFrom-Json
 
-az ad app update `
-    --id $app.appId `
-    --set groupMembershipClaims=SecurityGroup web.implicitGrantSettings.enableIdTokenIssuance=true | Out-Host
+$appPatch = @{
+    groupMembershipClaims = "SecurityGroup"
+    web                   = @{
+        redirectUris           = @($RedirectUri)
+        implicitGrantSettings  = @{
+            enableIdTokenIssuance     = $true
+            enableAccessTokenIssuance = $false
+        }
+    }
+} | ConvertTo-Json -Depth 5
+
+$patchFile = New-TemporaryFile
+try {
+    [System.IO.File]::WriteAllText($patchFile.FullName, $appPatch, [System.Text.UTF8Encoding]::new($false))
+    az rest `
+        --method PATCH `
+        --uri "https://graph.microsoft.com/v1.0/applications/$($app.id)" `
+        --headers "Content-Type=application/json" `
+        --body "@$($patchFile.FullName)" | Out-Host
+} finally {
+    Remove-Item -LiteralPath $patchFile.FullName -ErrorAction SilentlyContinue
+}
 
 Write-Step "Creating service principal"
 az ad sp create --id $app.appId --only-show-errors | Out-Host
