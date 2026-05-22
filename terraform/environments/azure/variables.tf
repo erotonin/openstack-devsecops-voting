@@ -16,6 +16,11 @@ variable "gitops_target_revision" {
   description = "Git revision tracked by the standby ArgoCD controller"
 }
 
+variable "github_repo" {
+  default     = "erotonin/devsecops-voting"
+  description = "GitHub repository allowed to use Azure workload identity from GitHub Actions"
+}
+
 variable "vnet_cidr" {
   description = "Azure VNet CIDR. Must not overlap with the AWS VPC CIDR."
   default     = "10.1.0.0/16"

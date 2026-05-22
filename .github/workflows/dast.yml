@@ -1,0 +1,43 @@
+name: OWASP ZAP DAST
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: "HTTP/HTTPS URL to scan. Defaults to repository variable STAGING_URL."
+        required: false
+        type: string
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  issues: read
+
+jobs:
+  zap-baseline:
+    name: ZAP baseline scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || vars.STAGING_URL != ''
+    steps:
+      - name: Resolve target URL
+        id: target
+        run: |
+          target="${{ inputs.target_url }}"
+          if [ -z "$target" ]; then
+            target="${{ vars.STAGING_URL }}"
+          fi
+          if [ -z "$target" ]; then
+            echo "STAGING_URL is not set and no target_url input was provided." >&2
+            exit 1
+          fi
+          echo "url=$target" >> "$GITHUB_OUTPUT"
+
+      - name: OWASP ZAP baseline
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: ${{ steps.target.outputs.url }}
+          fail_action: true
+          allow_issue_writing: false
+          artifact_name: zap-baseline-report

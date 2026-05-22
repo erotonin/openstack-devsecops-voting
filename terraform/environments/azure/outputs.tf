@@ -23,6 +23,11 @@ output "acr_login_server_from_module" {
   value = azurerm_container_registry.acr.login_server
 }
 
+output "github_actions_azure_client_id" {
+  value       = azurerm_user_assigned_identity.github_actions.client_id
+  description = "Azure workload identity client ID for GitHub Actions OIDC"
+}
+
 output "key_vault_uri" {
   value = azurerm_key_vault.app.vault_uri
 }
