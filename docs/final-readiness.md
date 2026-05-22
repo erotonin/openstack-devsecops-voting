@@ -20,6 +20,7 @@ This file summarizes the final project state for the capstone handoff.
 - Loki/Promtail logging.
 - Falco/Falcosidekick runtime detection and incident workflow.
 - DR failover script for AKS warm standby validation and RTO measurement.
+- EKS upgrade path documented and Terraform target prepared for Kubernetes `1.31`.
 
 ## Verified Evidence
 
@@ -30,6 +31,7 @@ This file summarizes the final project state for the capstone handoff.
 - PR security gate demo passed on pull request `#28`.
 - Production approval workflow_dispatch run passed.
 - Redis CloudWatch log group is encrypted with KMS and retains logs for 365 days.
+- Live AWS EKS was observed at Kubernetes `1.30`; AKS was observed at `1.34.7`.
 
 ## Intentional Cost-Aware Exceptions
 
@@ -38,6 +40,7 @@ This file summarizes the final project state for the capstone handoff.
 - ACR Premium-only controls such as geo-replication, zone redundancy, retention policy, dedicated data endpoints, and Defender-integrated scanning are documented as production hardening items.
 - Cross-cloud database replication is represented by DR seed/restore workflow rather than live replication. Production should add database-native logical replication, AWS DMS, or backup shipping.
 - Canary/automated rollback is not enabled; current deployment uses rolling updates, readiness/liveness probes, and GitOps rollback by reverting Git. Production should add Argo Rollouts with Prometheus analysis.
+- AWS EKS should be upgraded from `1.30` to `1.31` before the demo handoff window if time allows, then advanced one minor version at a time. See `docs/eks-upgrade-runbook.md`.
 
 ## Demo Commands
 

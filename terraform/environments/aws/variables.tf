@@ -8,6 +8,12 @@ variable "cluster_name" {
   description = "EKS Cluster name"
 }
 
+variable "eks_kubernetes_version" {
+  type        = string
+  default     = "1.31"
+  description = "Target EKS Kubernetes version. Upgrade live clusters one minor version at a time."
+}
+
 variable "node_instance_type" {
   default     = "t3.medium"
   description = "EC2 instance type for EKS worker nodes"

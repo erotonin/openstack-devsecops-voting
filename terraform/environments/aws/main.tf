@@ -35,6 +35,7 @@ module "security_groups" {
 module "eks" {
   source              = "../../modules/eks"
   cluster_name        = var.cluster_name
+  kubernetes_version  = var.eks_kubernetes_version
   subnet_ids          = module.networking.private_subnet_ids
   node_instance_types = var.node_instance_types
   node_desired_size   = var.node_desired_size
