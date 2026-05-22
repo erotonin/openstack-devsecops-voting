@@ -109,6 +109,33 @@ Verified denials:
 - `deny-privileged.yaml` denied by Gatekeeper.
 - `deny-missing-resources.yaml` denied by Gatekeeper.
 
+## Monitoring, Logging, Detecting
+
+Monitoring:
+
+- `kube-prometheus-stack-grafana` pod is running.
+- `prometheus-kube-prometheus-stack-prometheus-0` pod is running.
+- `voting-app` ServiceMonitor exists in the `voting` namespace.
+- `voting-app-slo` PrometheusRule exists in the `voting` namespace.
+- Grafana dashboard ConfigMap exists with label `grafana_dashboard=1`.
+
+Metrics:
+
+- AWS vote endpoint `/metrics` exposes `voting_http_requests_total`.
+- AWS vote endpoint `/metrics` exposes `voting_http_request_duration_seconds`.
+- AWS result endpoint `/metrics` exposes `result_http_requests_total`.
+- AWS result endpoint `/metrics` exposes `result_http_request_duration_seconds`.
+
+Logging:
+
+- Loki is running in the `logging` namespace.
+- Promtail is running as node-level log collector pods.
+
+Detecting:
+
+- Falco daemonset pods are running in the `falco` namespace.
+- Falcosidekick pods are running in the `falco` namespace.
+
 ## Current Gate Policy
 
 Blocking PR gates:
