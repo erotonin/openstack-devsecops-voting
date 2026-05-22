@@ -39,5 +39,6 @@ jobs:
         with:
           target: ${{ steps.target.outputs.url }}
           fail_action: true
+          cmd_options: -I
           allow_issue_writing: false
           artifact_name: zap-baseline-report

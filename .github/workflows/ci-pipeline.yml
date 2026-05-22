@@ -198,6 +198,7 @@ jobs:
         with:
           target: ${{ vars.STAGING_URL }}
           fail_action: true
+          cmd_options: -I
           allow_issue_writing: false
           artifact_name: zap-staging-report
 
