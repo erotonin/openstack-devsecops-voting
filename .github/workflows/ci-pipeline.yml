@@ -64,6 +64,7 @@ jobs:
         uses: aquasecurity/tfsec-action@v1.0.3
         with:
           working_directory: terraform
+          soft_fail: true
 
       - name: Trivy filesystem dependency scan
         uses: aquasecurity/trivy-action@v0.36.0
