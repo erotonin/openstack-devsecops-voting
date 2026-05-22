@@ -35,7 +35,7 @@ jobs:
           echo "url=$target" >> "$GITHUB_OUTPUT"
 
       - name: OWASP ZAP baseline
-        uses: zaproxy/action-baseline@v0.14.0
+        uses: zaproxy/action-baseline@v0.15.0
         with:
           target: ${{ steps.target.outputs.url }}
           fail_action: true
