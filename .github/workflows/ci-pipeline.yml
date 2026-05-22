@@ -59,7 +59,7 @@ jobs:
           working_directory: terraform
 
       - name: Trivy filesystem dependency scan
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -127,7 +127,7 @@ jobs:
             "./${{ matrix.service }}"
 
       - name: Trivy image scan
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ matrix.service }}:${{ env.IMAGE_TAG }}
           severity: CRITICAL,HIGH
