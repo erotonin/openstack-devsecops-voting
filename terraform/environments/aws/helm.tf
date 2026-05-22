@@ -413,6 +413,16 @@ resource "kubernetes_manifest" "argocd_app_aws" {
         server    = "https://kubernetes.default.svc"
         namespace = "voting"
       }
+      ignoreDifferences = [
+        {
+          group     = "apps"
+          kind      = "Deployment"
+          namespace = "voting"
+          jsonPointers = [
+            "/spec/template/spec/containers/0/image"
+          ]
+        }
+      ]
       syncPolicy = {
         automated = {
           prune    = true
