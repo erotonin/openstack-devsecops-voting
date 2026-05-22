@@ -11,6 +11,38 @@ resource "kubernetes_namespace" "voting" {
   depends_on = [module.eks]
 }
 
+locals {
+  argocd_rbac_policy = join("\n", concat(
+    [for group in var.argocd_sso_admin_groups : "g, ${group}, role:admin"],
+    [for group in var.argocd_sso_readonly_groups : "g, ${group}, role:readonly"]
+  ))
+
+  argocd_cm = merge(
+    {
+      "admin.enabled" = "true"
+    },
+    var.argocd_sso_enabled ? {
+      url = var.argocd_url
+      "oidc.config" = yamlencode({
+        name            = "Azure Entra ID"
+        issuer          = "https://login.microsoftonline.com/${var.argocd_sso_tenant_id}/v2.0"
+        clientID        = var.argocd_sso_client_id
+        clientSecret    = "$oidc.azure.clientSecret"
+        requestedScopes = ["openid", "profile", "email"]
+        requestedIDTokenClaims = {
+          groups = {
+            essential = true
+          }
+        }
+      })
+    } : {}
+  )
+
+  argocd_secret_extra = var.argocd_sso_enabled ? {
+    "oidc.azure.clientSecret" = var.argocd_sso_client_secret
+  } : {}
+}
+
 resource "helm_release" "argocd" {
   name             = "argocd"
   repository       = "https://argoproj.github.io/argo-helm"
@@ -43,12 +75,13 @@ resource "helm_release" "argocd" {
         replicas = 1
       }
       configs = {
-        cm = {
-          "admin.enabled" = "true"
-        }
+        cm = local.argocd_cm
         rbac = {
           "policy.default" = "role:readonly"
-          "policy.csv"     = "g, devsecops-admins, role:admin\ng, devsecops-developers, role:readonly"
+          "policy.csv"     = local.argocd_rbac_policy
+        }
+        secret = {
+          extra = local.argocd_secret_extra
         }
       }
     })

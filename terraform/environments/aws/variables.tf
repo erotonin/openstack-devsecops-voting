@@ -86,6 +86,49 @@ variable "argocd_domain" {
   description = "ArgoCD external domain, used when ingress is enabled"
 }
 
+variable "argocd_url" {
+  type        = string
+  default     = "https://argocd.local"
+  description = "Canonical ArgoCD URL used for SSO callbacks"
+}
+
+variable "argocd_sso_enabled" {
+  type        = bool
+  default     = false
+  description = "Enable ArgoCD OIDC SSO with Azure Entra ID"
+}
+
+variable "argocd_sso_tenant_id" {
+  type        = string
+  default     = ""
+  description = "Azure Entra ID tenant ID for ArgoCD OIDC SSO"
+}
+
+variable "argocd_sso_client_id" {
+  type        = string
+  default     = ""
+  description = "Azure Entra ID application client ID for ArgoCD OIDC SSO"
+}
+
+variable "argocd_sso_client_secret" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Azure Entra ID application client secret for ArgoCD OIDC SSO"
+}
+
+variable "argocd_sso_admin_groups" {
+  type        = list(string)
+  default     = ["devsecops-admins"]
+  description = "OIDC group names or object IDs mapped to ArgoCD admin"
+}
+
+variable "argocd_sso_readonly_groups" {
+  type        = list(string)
+  default     = ["devsecops-developers"]
+  description = "OIDC group names or object IDs mapped to ArgoCD readonly"
+}
+
 variable "enable_observability" {
   type        = bool
   default     = true
