@@ -1,5 +1,13 @@
 # DevSecOps Voting App on AWS EKS
 
+## Current Project Docs
+
+- Final demo script: `docs/demo-script.md`
+- Live demo evidence: `docs/demo-evidence-2026-05-22.md`
+- Scope lock: `docs/scope-lock.md`
+- Implementation map: `docs/implementation-map.md`
+- Evidence checklist: `docs/evidence-checklist.md`
+
 A production-grade microservices application deployed on **AWS EKS** with a fully automated **DevSecOps CI/CD pipeline**, **GitOps** continuous delivery, and **real-time monitoring**.
 
 ## Architecture
