@@ -81,12 +81,18 @@ if ($ConfigureBranchProtection) {
         allow_fork_syncing            = $true
     } | ConvertTo-Json -Depth 6
 
-    $payload | & $Gh api `
-        --method PUT `
-        -H "Accept: application/vnd.github+json" `
-        -H "X-GitHub-Api-Version: 2022-11-28" `
-        "/repos/$Repo/branches/main/protection" `
-        --input - | Out-Host
+    $payloadFile = New-TemporaryFile
+    try {
+        Set-Content -LiteralPath $payloadFile -Value $payload -Encoding utf8
+        & $Gh api `
+            --method PUT `
+            -H "Accept: application/vnd.github+json" `
+            -H "X-GitHub-Api-Version: 2022-11-28" `
+            "/repos/$Repo/branches/main/protection" `
+            --input $payloadFile | Out-Host
+    } finally {
+        Remove-Item -LiteralPath $payloadFile -ErrorAction SilentlyContinue
+    }
 }
 
 Write-Step "Repository configuration completed"
