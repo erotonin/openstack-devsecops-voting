@@ -72,24 +72,17 @@ if ($ConfigureBranchProtection) {
             dismiss_stale_reviews           = $true
         }
         restrictions                  = $null
-        required_linear_history       = $false
-        allow_force_pushes            = $false
-        allow_deletions               = $false
-        block_creations               = $false
-        required_conversation_resolution = $true
-        lock_branch                   = $false
-        allow_fork_syncing            = $true
     } | ConvertTo-Json -Depth 6
 
     $payloadFile = New-TemporaryFile
     try {
-        Set-Content -LiteralPath $payloadFile -Value $payload -Encoding utf8
+        [System.IO.File]::WriteAllText($payloadFile.FullName, $payload, [System.Text.UTF8Encoding]::new($false))
         & $Gh api `
             --method PUT `
             -H "Accept: application/vnd.github+json" `
             -H "X-GitHub-Api-Version: 2022-11-28" `
             "/repos/$Repo/branches/main/protection" `
-            --input $payloadFile | Out-Host
+            --input $payloadFile.FullName | Out-Host
     } finally {
         Remove-Item -LiteralPath $payloadFile -ErrorAction SilentlyContinue
     }

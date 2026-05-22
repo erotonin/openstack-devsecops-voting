@@ -1,6 +1,8 @@
 from flask import Flask, render_template, request, make_response, g
 from redis import Redis
 from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+import hashlib
+import hmac
 import os
 import socket
 import random
@@ -35,7 +37,19 @@ def start_request_timer():
     g.request_started_at = time.time()
 
 @app.after_request
-def record_request_metrics(response):
+def record_request_metrics_and_headers(response):
+    response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    response.headers.setdefault('X-Frame-Options', 'DENY')
+    response.headers.setdefault('Referrer-Policy', 'no-referrer')
+    response.headers.setdefault('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+    response.headers.setdefault(
+        'Content-Security-Policy',
+        "default-src 'self'; style-src 'self'; img-src 'self' data:; frame-ancestors 'none'; form-action 'self'; base-uri 'self'",
+    )
+
+    if request.path != '/metrics':
+        response.headers.setdefault('Cache-Control', 'no-store')
+
     if request.path == '/metrics':
         return response
 
@@ -45,6 +59,10 @@ def record_request_metrics(response):
         time.time() - getattr(g, 'request_started_at', time.time())
     )
     return response
+
+def csrf_token_for(voter_id):
+    secret = os.getenv('APP_SECRET') or os.getenv('REDIS_PASSWORD') or 'devsecops-voting-dev-secret'
+    return hmac.new(secret.encode(), voter_id.encode(), hashlib.sha256).hexdigest()
 
 def get_redis():
     if not hasattr(g, 'redis'):
@@ -75,6 +93,10 @@ def hello():
     vote = None
 
     if request.method == 'POST':
+        expected_csrf_token = csrf_token_for(voter_id)
+        if not hmac.compare_digest(request.form.get('csrf_token', ''), expected_csrf_token):
+            return {"error": "invalid csrf token"}, 400
+
         redis = get_redis()
         vote = request.form['vote']
         app.logger.info('Received vote for %s', vote)
@@ -87,6 +109,7 @@ def hello():
         option_b=option_b,
         hostname=hostname,
         vote=vote,
+        csrf_token=csrf_token_for(voter_id),
     ))
     resp.set_cookie(
         'voter_id',

@@ -80,6 +80,18 @@ function collectVotesFromResult(result) {
 }
 
 app.use(cookieParser());
+app.use(function (_req, res, next) {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' ws: wss:; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'"
+  );
+  res.setHeader('Cache-Control', 'no-store');
+  next();
+});
 app.use(function (req, res, next) {
   if (req.path === '/metrics') {
     return next();
