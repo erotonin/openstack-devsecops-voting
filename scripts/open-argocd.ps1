@@ -24,6 +24,6 @@ Write-Host "ArgoCD URL: http://localhost:$LocalPort" -ForegroundColor Green
 Write-Host "SSO redirect URI: http://localhost:$LocalPort/auth/callback" -ForegroundColor Green
 Write-Host ""
 Write-Host "Keep this terminal open while using ArgoCD. Press Ctrl+C to stop port-forward." -ForegroundColor Yellow
-Write-Host "The browser may warn about the ArgoCD self-signed certificate; accept it for the local demo." -ForegroundColor Yellow
+Write-Host "This forwards to the HTTP service port. For production, expose ArgoCD through TLS ingress instead." -ForegroundColor Yellow
 
-kubectl --context $Context -n $Namespace port-forward svc/argocd-server "${LocalPort}:443"
+kubectl --context $Context -n $Namespace port-forward svc/argocd-server "${LocalPort}:80"

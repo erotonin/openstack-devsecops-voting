@@ -73,6 +73,9 @@ resource "helm_release" "argocd" {
       }
       configs = {
         cm = local.argocd_cm
+        params = {
+          "server.insecure" = var.argocd_sso_enabled ? "true" : "false"
+        }
         rbac = {
           "policy.default" = "role:readonly"
           "policy.csv"     = local.argocd_rbac_policy
