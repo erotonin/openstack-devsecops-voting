@@ -12,7 +12,11 @@ Use this checklist while recording the final demo and writing the report.
 - Azure ArgoCD app `voting-azure` is `Synced Healthy`.
 - AWS public staging vote endpoint returned HTTP 200:
   `http://a4bdf43777192482cb1c20c79adafff8-2084416586.us-east-1.elb.amazonaws.com`
+- DR drill recovered Azure warm standby with RTO `1.09 minutes`.
+- Runtime incident workflow succeeded and created issue #27:
+  https://github.com/erotonin/devsecops-voting/issues/27
 - Checkov and tfsec currently run as report-only baseline scans. Trivy, Semgrep, Gitleaks, Helm, and Conftest remain blocking PR gates.
+- Detailed evidence is recorded in `docs/demo-evidence-2026-05-22.md`.
 
 ## Infrastructure
 
