@@ -48,14 +48,32 @@ function Remove-KubernetesResources {
     Write-Step "Pre-destroy Kubernetes cleanup"
     $namespaces = @("voting", "argocd", "monitoring", "logging", "falco", "external-secrets", "gatekeeper-system")
 
-    foreach ($ns in $namespaces) {
-        kubectl delete applications.argoproj.io --all -n $ns --ignore-not-found=true 2>$null
-        kubectl delete ingress --all -n $ns --ignore-not-found=true 2>$null
-        kubectl delete svc --all -n $ns --ignore-not-found=true 2>$null
+    function Invoke-KubectlBestEffort {
+        param(
+            [string[]]$Arguments,
+            [string]$WarningMessage
+        )
+
+        $previousErrorActionPreference = $ErrorActionPreference
+        $ErrorActionPreference = "Continue"
+        try {
+            & kubectl @Arguments 2>$null | Out-Host
+            if ($LASTEXITCODE -ne 0) {
+                Write-Warning $WarningMessage
+            }
+        } finally {
+            $ErrorActionPreference = $previousErrorActionPreference
+        }
     }
 
     foreach ($ns in $namespaces) {
-        kubectl delete namespace $ns --ignore-not-found=true --timeout=90s 2>$null
+        Invoke-KubectlBestEffort -Arguments @("delete", "applications.argoproj.io", "--all", "-n", $ns, "--ignore-not-found=true") -WarningMessage "Could not delete ArgoCD applications in namespace $ns; continuing."
+        Invoke-KubectlBestEffort -Arguments @("delete", "ingress", "--all", "-n", $ns, "--ignore-not-found=true") -WarningMessage "Could not delete ingresses in namespace $ns; continuing."
+        Invoke-KubectlBestEffort -Arguments @("delete", "svc", "--all", "-n", $ns, "--ignore-not-found=true") -WarningMessage "Could not delete services in namespace $ns; continuing."
+    }
+
+    foreach ($ns in $namespaces) {
+        Invoke-KubectlBestEffort -Arguments @("delete", "namespace", $ns, "--ignore-not-found=true", "--timeout=90s") -WarningMessage "Namespace $ns was not fully deleted within 90s; Terraform destroy will continue."
     }
 }
 
