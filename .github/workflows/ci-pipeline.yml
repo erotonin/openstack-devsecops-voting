@@ -23,6 +23,7 @@ permissions:
   id-token: write
   security-events: write
   actions: read
+  pull-requests: read
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
@@ -40,6 +41,8 @@ jobs:
 
       - name: Gitleaks secret scan
         uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Semgrep SAST
         uses: semgrep/semgrep-action@v1
