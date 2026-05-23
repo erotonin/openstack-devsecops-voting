@@ -1,6 +1,12 @@
+locals {
+  # During full destroy the Azure state can be emptied before AWS refreshes.
+  # Keep a placeholder so AWS VPN resources remain destroyable.
+  azure_vpn_public_ip = try(data.terraform_remote_state.azure.outputs.azure_vpn_public_ip, "203.0.113.2")
+}
+
 resource "aws_customer_gateway" "cgw" {
   bgp_asn    = var.azure_bgp_asn
-  ip_address = data.terraform_remote_state.azure.outputs.azure_vpn_public_ip
+  ip_address = local.azure_vpn_public_ip
   type       = "ipsec.1"
 
   tags = merge(local.common_tags, {
