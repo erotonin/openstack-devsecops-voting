@@ -61,8 +61,7 @@ resource "azurerm_local_network_gateway" "lng" {
 
   bgp_settings {
     asn = var.aws_bgp_asn
-    # bgp_peering_address is AZURE's inside tunnel IP (CGW side), not AWS's VGW IP
-    bgp_peering_address = local.aws_tunnel1_cgw_inside_address
+    bgp_peering_address = local.aws_tunnel1_vgw_inside_address
   }
 }
 
@@ -76,5 +75,9 @@ resource "azurerm_virtual_network_gateway_connection" "vpn_conn" {
   local_network_gateway_id   = azurerm_local_network_gateway.lng.id
   shared_key                 = local.aws_tunnel1_preshared_key
   enable_bgp                 = true
+
+  custom_bgp_addresses {
+    primary = local.aws_tunnel1_cgw_inside_address
+  }
 }
 
