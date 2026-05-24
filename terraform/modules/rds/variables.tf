@@ -96,6 +96,24 @@ variable "apply_immediately" {
   default     = false
 }
 
+variable "enable_logical_replication" {
+  description = "Enable RDS PostgreSQL logical replication parameters for cross-cloud publication."
+  type        = bool
+  default     = false
+}
+
+variable "logical_replication_max_wal_senders" {
+  description = "max_wal_senders value when logical replication is enabled."
+  type        = string
+  default     = "10"
+}
+
+variable "logical_replication_max_replication_slots" {
+  description = "max_replication_slots value when logical replication is enabled."
+  type        = string
+  default     = "10"
+}
+
 variable "tags" {
   description = "Common tags"
   type        = map(string)

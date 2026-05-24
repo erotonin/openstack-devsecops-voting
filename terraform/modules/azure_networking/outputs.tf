@@ -22,6 +22,10 @@ output "aks_subnet_id" {
   value = azurerm_subnet.aks.id
 }
 
+output "postgres_subnet_id" {
+  value = azurerm_subnet.postgres.id
+}
+
 output "gateway_subnet_id" {
   value = azurerm_subnet.gateway.id
 }

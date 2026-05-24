@@ -73,6 +73,11 @@ variable "aks_subnet_cidr" {
   default = "10.1.1.0/24"
 }
 
+variable "db_subnet_cidr" {
+  description = "Azure PostgreSQL Flexible Server delegated subnet CIDR."
+  default     = "10.1.2.0/24"
+}
+
 variable "gateway_subnet_cidr" {
   default = "10.1.255.0/27"
 }
@@ -88,6 +93,24 @@ variable "name_prefix" {
 variable "azure_db_host" {
   description = "Azure PostgreSQL host after DR restore. Override this during the DR drill."
   default     = "restore-required.postgres.database.azure.com"
+}
+
+variable "enable_azure_postgres_standby" {
+  type        = bool
+  default     = false
+  description = "Create Azure PostgreSQL Flexible Server as the logical replication subscriber."
+}
+
+variable "azure_postgres_sku_name" {
+  type        = string
+  default     = "B_Standard_B1ms"
+  description = "Azure PostgreSQL Flexible Server SKU for the warm standby database."
+}
+
+variable "azure_postgres_storage_mb" {
+  type        = number
+  default     = 32768
+  description = "Azure PostgreSQL storage size in MB."
 }
 
 variable "azure_redis_host" {

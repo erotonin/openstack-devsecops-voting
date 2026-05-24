@@ -39,3 +39,9 @@ resource "aws_vpn_gateway_route_propagation" "private" {
   route_table_id = module.networking.private_route_table_ids[count.index]
 }
 
+resource "aws_vpn_gateway_route_propagation" "database" {
+  count          = length(module.networking.database_route_table_ids)
+  vpn_gateway_id = aws_vpn_gateway.vgw.id
+  route_table_id = module.networking.database_route_table_ids[count.index]
+}
+

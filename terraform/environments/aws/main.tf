@@ -69,17 +69,18 @@ module "redis_secret" {
 }
 
 module "rds" {
-  source              = "../../modules/rds"
-  identifier          = "${var.name_prefix}-postgres"
-  subnet_ids          = module.networking.database_subnet_ids
-  security_group_ids  = [module.security_groups.rds_sg_id]
-  master_username     = "postgres"
-  master_password     = module.db_secret.password
-  db_name             = "voting"
-  deletion_protection = false
-  skip_final_snapshot = true
-  apply_immediately   = true
-  tags                = local.common_tags
+  source                     = "../../modules/rds"
+  identifier                 = "${var.name_prefix}-postgres"
+  subnet_ids                 = module.networking.database_subnet_ids
+  security_group_ids         = [module.security_groups.rds_sg_id]
+  master_username            = "postgres"
+  master_password            = module.db_secret.password
+  db_name                    = "voting"
+  deletion_protection        = false
+  skip_final_snapshot        = true
+  apply_immediately          = true
+  enable_logical_replication = var.enable_postgres_logical_replication
+  tags                       = local.common_tags
 }
 
 resource "aws_kms_key" "redis_logs" {

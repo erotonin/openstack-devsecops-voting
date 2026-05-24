@@ -4,6 +4,7 @@ module "azure_networking" {
   location            = var.location
   vnet_cidr           = var.vnet_cidr
   aks_subnet_cidr     = var.aks_subnet_cidr
+  db_subnet_cidr      = var.db_subnet_cidr
   gateway_subnet_cidr = var.gateway_subnet_cidr
   peer_vpc_cidr       = var.aws_vpc_cidr
 }

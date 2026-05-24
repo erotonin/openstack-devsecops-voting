@@ -1,7 +1,8 @@
 replicaCount: 1
 
 service:
-  type: ClusterIP
+  # LoadBalancer exposes a public IP on AKS so DNS failover can point traffic here
+  type: LoadBalancer
 
 ingress:
   enabled: false
@@ -12,14 +13,14 @@ ingress:
 
 images:
   vote:
-    repository: devsecopsvotingacr7jg8dl.azurecr.io/voting-app-vote
-    tag: 6c9e7499526a98cd87225efbf075f37c29be153c
+    repository: devsecopsvotingacrfi1hac.azurecr.io/voting-app-vote
+    tag: 8dc69948077914955a8a0b78af4bedd1d8d3c4d2
   result:
-    repository: devsecopsvotingacr7jg8dl.azurecr.io/voting-app-result
-    tag: 6c9e7499526a98cd87225efbf075f37c29be153c
+    repository: devsecopsvotingacrfi1hac.azurecr.io/voting-app-result
+    tag: 8dc69948077914955a8a0b78af4bedd1d8d3c4d2
   worker:
-    repository: devsecopsvotingacr7jg8dl.azurecr.io/voting-app-worker
-    tag: 6c9e7499526a98cd87225efbf075f37c29be153c
+    repository: devsecopsvotingacrfi1hac.azurecr.io/voting-app-worker
+    tag: 8dc69948077914955a8a0b78af4bedd1d8d3c4d2
   redis:
     repository: redis
     tag: 7-alpine

@@ -36,6 +36,21 @@ output "app_runtime_secret_name" {
   value = azurerm_key_vault_secret.app_runtime.name
 }
 
+output "azure_postgres_host" {
+  value       = local.azure_db_host_effective
+  description = "Azure PostgreSQL standby hostname used by the app runtime secret."
+}
+
+output "azure_postgres_database" {
+  value       = local.azure_db_database_effective
+  description = "Azure PostgreSQL standby database name."
+}
+
+output "azure_postgres_user" {
+  value       = local.azure_db_user_effective
+  description = "Azure PostgreSQL standby user."
+}
+
 output "azure_bgp_asn" {
   value = var.azure_bgp_asn
 }
