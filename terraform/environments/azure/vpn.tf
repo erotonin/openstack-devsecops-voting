@@ -19,6 +19,10 @@ resource "azurerm_virtual_network_gateway" "vng" {
 
   bgp_settings {
     asn = var.azure_bgp_asn
+    peering_addresses {
+      ip_configuration_name = "vnetGatewayConfig"
+      apipa_addresses       = [local.aws_tunnel1_cgw_inside_address]
+    }
   }
 
   ip_configuration {
