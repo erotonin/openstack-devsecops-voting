@@ -182,3 +182,9 @@ variable "enable_aks_spoke_registration" {
   default     = false
   description = "Register AKS as a spoke cluster in the AWS ArgoCD hub. Disabled by default because AKS has its own standby ArgoCD."
 }
+
+variable "falco_slack_webhook_url" {
+  type        = string
+  default     = ""
+  description = "Optional Falcosidekick Slack Webhook URL for real-time alerting"
+}

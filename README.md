@@ -1,210 +1,132 @@
-# DevSecOps Voting App on AWS EKS
+# 🚀 DevSecOps Enterprise Voting App (Multi-Cloud)
 
-## Current Project Docs
+![Architecture: Multi-Cloud](https://img.shields.io/badge/Architecture-Multi--Cloud-blue)
+![CI/CD: GitHub Actions](https://img.shields.io/badge/CI%2FCD-GitHub_Actions-2088FF?logo=github-actions&logoColor=white)
+![GitOps: ArgoCD](https://img.shields.io/badge/GitOps-ArgoCD-EF7B4D?logo=argo&logoColor=white)
+![Security: Sigstore+Falco](https://img.shields.io/badge/Security-Sigstore_%7C_Falco_%7C_Gatekeeper-success)
 
-- Final demo script: `docs/demo-script.md`
-- Live demo evidence: `docs/demo-evidence-2026-05-22.md`
-- Scope lock: `docs/scope-lock.md`
-- Implementation map: `docs/implementation-map.md`
-- Evidence checklist: `docs/evidence-checklist.md`
+A **Production-grade, Multi-Cloud DevSecOps Reference Architecture**. This project deploys a microservices application across **AWS EKS** (Primary) and **Azure AKS** (Standby), connected via an IPsec VPN, featuring a fully automated DevSecOps CI/CD pipeline, Hub-and-Spoke GitOps, Keyless Image Signing, and Automated Incident Response (SOAR).
 
-A production-grade microservices application deployed on **AWS EKS** with a fully automated **DevSecOps CI/CD pipeline**, **GitOps** continuous delivery, and **real-time monitoring**.
+## 🌟 Core Architecture
 
-## Architecture
-
-```
-Developer Push Code
-        │
-        ▼
-┌───────────────────────────────────────────────┐
-│        GitHub Actions (CI - Parallel)         │
-│                                               │
-│  ┌─────────────┐    ┌──────────────────────┐  │
-│  │ OWASP (SCA) │    │ SonarQube (SAST)     │  │
-│  │ Dependency   │    │ Python + C# Scanner  │  │
-│  │ Check        │    │                      │  │
-│  └──────┬──────┘    └──────────┬───────────┘  │
-│         └──────────┬───────────┘              │
-│                    ▼                          │
-│  Docker Build → Trivy Scan → Push to ECR      │
-│                    │                          │
-│         Auto-update values.yaml               │
-└───────────────────┬───────────────────────────┘
-                    │ git push
-                    ▼
-┌───────────────────────────────────────────────┐
-│              Argo CD (GitOps)                 │
-│  Detect changes → Pull image → Rolling Update │
-└───────────────────┬───────────────────────────┘
-                    ▼
-┌───────────────────────────────────────────────┐
-│              AWS EKS Cluster                  │
-│  Vote │ Result │ Worker │ Redis │ PostgreSQL  │
-│                                               │
-│         Prometheus → Grafana (Monitoring)     │
-└───────────────────────────────────────────────┘
+```text
+                        [Internet / Users]
+                               │
+                (Route53 / Cloudflare DNS Failover)
+                 ┌─────────────┴─────────────┐
+                 ▼ (Primary)                 ▼ (Warm-Standby)
+        ┌──────────────────┐        ┌──────────────────┐
+        │     AWS EKS      │        │    Azure AKS     │
+        │  [Voting App]    │◄──────►│  [Voting App]    │
+        │  [ArgoCD Hub]────┼─(VPN)──┼─►[ArgoCD Spoke]  │
+        └───────┬──────────┘  BGP   └──────────┬───────┘
+                │                              │
+     (ESO) ◄────┘                              └────► (ESO)
+        ▼                                              ▼
+[AWS Secrets Manager]                         [Azure Key Vault]
+[AWS RDS Postgres]                            [Azure Database]
+[AWS ElastiCache]                                     
 ```
 
-## Tech Stack
+## 🔥 Enterprise DevSecOps Features
 
-| Category | Tools |
-|----------|-------|
-| **Application** | Python (Flask), Node.js, .NET 7, Redis, PostgreSQL |
-| **Containerization** | Docker (Multi-stage builds) |
-| **Infrastructure** | Terraform, AWS VPC, EKS, ECR, IAM, OIDC |
-| **CI/CD** | GitHub Actions (parallel jobs) |
-| **Security** | OWASP Dependency-Check, SonarQube (SAST), Trivy (Container Scan) |
-| **GitOps** | Argo CD (auto-sync, self-heal, cascading delete) |
-| **Monitoring** | Prometheus, Grafana (kube-prometheus-stack) |
-| **Authentication** | OIDC (GitHub ↔ AWS, no Access Keys) |
+This repository is built following industry best practices and is divided into 6 distinct phases of maturity:
 
-## Project Structure
+1. **Multi-Cloud Foundation & VPN:** AWS (Primary) and Azure (Warm-Standby) peered via BGP IPsec VPN. Uses **IRSA** (AWS) and **Workload Identity** (Azure) for passwordless cloud API access.
+2. **Platform & GitOps (Hub-and-Spoke):** 
+   - **ArgoCD** on AWS acts as the central Hub, deploying workloads to both EKS and AKS. 
+   - **Azure Entra ID SSO** provides Role-Based Access Control (RBAC).
+   - **External Secrets Operator (ESO)** bridges cloud secret managers (AWS Secrets Manager / Azure Key Vault) directly to Kubernetes.
+3. **Stateful Managed Services:** Decoupled architecture. The Kubernetes cluster is completely stateless. State is offloaded to managed **AWS RDS (PostgreSQL)** and **AWS ElastiCache (Redis)**. Containers are locked down with `runAsNonRoot` and `capabilities: drop: ALL`.
+4. **Supply Chain Security & Defense-in-Depth:**
+   - **Shift-Left:** `Conftest` checks YAML syntax in Pull Requests.
+   - **Shift-Right:** `OPA Gatekeeper` prevents malicious configurations at the cluster door (e.g., denying `latest` tags, requiring `runAsNonRoot`).
+   - **Sigstore Cosign:** Keyless signature validation. The cluster will *deny* any image that was not built and signed by the official CI/CD pipeline.
+5. **6-Stage Security CI/CD Pipeline:** 
+   - Code Push -> `Gitleaks` (Secret Scan) -> `Semgrep` (SAST) -> `Checkov/tfsec` (IaC Scan) -> `Trivy` (Image Scan) -> `Anchore` (SBOM) -> `OWASP ZAP` (DAST on Staging) -> Human Approval -> Production.
+   - Pushes Docker Images and signatures to **BOTH** AWS ECR and Azure ACR simultaneously using OIDC.
+6. **Observability, SOAR & Disaster Recovery:**
+   - **Observability:** Prometheus, Grafana (with custom SLI/SLO dashboards), Promtail, and Loki.
+   - **SOAR (Automated Response):** `Falco` eBPF detects anomalous container behavior -> Slack Webhook -> GitHub Actions Approval -> Kubernetes `NetworkPolicy` isolates the compromised Pod without killing it (preserving forensics).
+   - **Disaster Recovery:** Automated PowerShell scripts to trigger DNS failover and promote the Azure AKS cluster in case of an AWS region outage.
 
-```
+## 🛠️ Tech Stack
+
+| Layer | Technologies |
+|-------|--------------|
+| **Infrastructure** | Terraform, AWS (VPC, EKS, RDS, ElastiCache), Azure (VNet, AKS) |
+| **Compute / Platform** | Kubernetes, Helm, External Secrets Operator (ESO) |
+| **CI/CD** | GitHub Actions, Multi-Architecture Docker Builds, ArgoCD |
+| **Code Security (SAST)** | Gitleaks, Semgrep, Checkov, tfsec |
+| **Supply Chain Security**| Trivy, Syft (SBOM), Sigstore (Cosign), OPA Gatekeeper, Conftest |
+| **Runtime Security** | Falco (eBPF), Kubernetes Network Policies, Pod Security Context |
+| **Observability** | Prometheus, Grafana, Loki, Promtail |
+
+## 📁 Repository Structure
+
+```text
 DevSecOps-Voting-App/
-├── .github/workflows/
-│   └── ci-pipeline.yml         # CI/CD pipeline (3 parallel jobs)
-├── vote/                       # Python/Flask - voting frontend
-│   └── Dockerfile
-├── result/                     # Node.js - results frontend
-│   └── Dockerfile
-├── worker/                     # .NET 7 - vote processor
-│   ├── Dockerfile
-│   └── .dockerignore
-├── k8s/                        # Kubernetes Helm Chart
-│   ├── Chart.yaml
-│   ├── values.yaml             # Auto-updated by CI pipeline
-│   ├── argocd-app.yaml         # ArgoCD Application (with finalizer)
-│   └── templates/
-│       ├── vote.yaml
-│       ├── result.yaml
-│       ├── worker.yaml
-│       ├── redis.yaml
-│       └── db.yaml
-├── terraform/                  # Infrastructure as Code
-│   ├── provider.tf             # AWS, Helm, Kubernetes providers
-│   ├── variables.tf            # Centralized configuration
-│   ├── vpc.tf                  # VPC, 4 Subnets, NAT Gateway
-│   ├── iam.tf                  # IAM Roles (Least Privilege)
-│   ├── eks.tf                  # EKS Cluster + Node Group
-│   ├── ecr.tf                  # 3 ECR Repositories
-│   ├── oidc.tf                 # GitHub Actions OIDC Federation
-│   ├── helm.tf                 # ArgoCD, SonarQube, Prometheus
-│   └── outputs.tf
-├── docker-compose.yml          # Local development
-├── suppression.xml             # OWASP false-positive suppressions
-└── .gitignore
+├── .github/workflows/          # CI/CD, SOAR Incident Response, Quarantine Workflows
+├── app/                        # Source code (Vote, Result, Worker)
+├── k8s/                        # Helm charts & K8s Manifests for ArgoCD
+├── Mentor/                     # Deep-dive architectural documentation (Phase 1 to 7)
+├── observability/              # Custom Grafana Dashboards (SLI/SLO)
+├── policies/                   # OPA Gatekeeper constraints, Conftest rules, Sigstore config
+├── response/                   # SOAR Kubernetes isolation NetworkPolicies
+├── runbooks/                   # Disaster Recovery & Failover procedures
+├── scripts/                    # Automation (infra-up, dr-failover, sso-config)
+└── terraform/                  # Multi-cloud IaC
+    ├── environments/aws/       # EKS, RDS, VPN, ArgoCD Hub
+    ├── environments/azure/     # AKS, Key Vault, VPN
+    └── modules/                # Reusable Terraform components
 ```
 
-## Prerequisites
+## 🚀 Quick Start
 
-- [AWS CLI](https://aws.amazon.com/cli/) configured with credentials
-- [Terraform](https://www.terraform.io/downloads) >= 1.0
-- [kubectl](https://kubernetes.io/docs/tasks/tools/)
-- [Docker](https://www.docker.com/get-started)
+### 1. Prerequisites
+- AWS CLI & Azure CLI configured.
+- Terraform >= 1.5.0
+- PowerShell 7+
+- A GitHub repository to host this code (for GitHub Actions OIDC).
 
-## Quick Start
-
-### 1. Deploy Infrastructure (~15-20 min)
-```bash
-cd terraform
-terraform init
-terraform apply -auto-approve
+### 2. Configure Repositories & SSO
+Run the automated configuration scripts to set up GitHub Secrets (OIDC) and Azure Entra ID App Registrations:
+```powershell
+.\scripts\configure-github-repo.ps1
+.\scripts\configure-argocd-entra-sso.ps1
 ```
 
-### 2. Connect to EKS
-```bash
-aws eks update-kubeconfig --region us-east-1 --name voting-app-cluster
+### 3. Deploy Multi-Cloud Infrastructure (~30-40 mins)
+Use the automated wrapper script to deploy AWS, Azure, and the BGP VPN Tunnel sequentially:
+```powershell
+.\scripts\infra-up.ps1
 ```
 
-### 3. Configure SonarQube Token
-```bash
-# Get SonarQube URL
-kubectl get svc -n sonarqube
-
-# Login (admin/admin) → Create Token → Add to GitHub Secrets:
-# - SONAR_TOKEN
-# - SONAR_HOST_URL
+### 4. Apply Security Policies (Gatekeeper & Sigstore)
+```powershell
+.\scripts\apply-gatekeeper-policies.ps1
+.\scripts\apply-sigstore-policy.ps1
 ```
 
-### 4. Configure GitHub Secrets
-| Secret Name | Value |
-|-------------|-------|
-| `AWS_ROLE_ARN` | Output from `terraform output github_actions_role_arn` |
-| `SONAR_TOKEN` | Generated from SonarQube UI |
-| `SONAR_HOST_URL` | SonarQube LoadBalancer URL |
+### 5. Trigger the Pipeline
+Commit code to `main`. Watch the GitHub Actions pipeline perform the 6-stage security scan, build, sign, and push to ECR/ACR. ArgoCD will automatically sync the new version to the cluster.
 
-### 5. Trigger Pipeline
-```bash
-git add . && git commit -m "Deploy" && git push
+## 💣 Disaster Recovery Drill
+
+To simulate an AWS Outage and failover to Azure:
+1. Review `runbooks/dr-drill.md`.
+2. Execute the failover script:
+   ```powershell
+   .\scripts\dr-failover.ps1
+   ```
+3. The script will sync the RDS password to Azure and promote the AKS cluster to Primary.
+
+## 🧹 Cleanup
+
+To destroy all resources on both clouds and prevent unexpected billing:
+```powershell
+.\scripts\infra-down.ps1 -AutoApprove
 ```
 
-### 6. Access Applications
-```bash
-# Voting App
-kubectl get svc vote result
-
-# ArgoCD (admin / admin123)
-kubectl get svc -n argocd argocd-server
-
-# Grafana (admin / admin123)
-kubectl get svc -n monitoring prometheus-grafana
-
-# SonarQube (admin / admin)
-kubectl get svc -n sonarqube
-```
-
-## CI/CD Pipeline Flow
-
-The pipeline runs **3 parallel jobs** for maximum speed:
-
-```
-Push to main
-    ├── Job 1: OWASP Scan ──────────┐
-    ├── Job 2: SonarQube Scan ──────┤ (parallel)
-    │                                │
-    │    Both PASS?                  │
-    │        │                       │
-    │        ▼                       │
-    └── Job 3: Build & Deploy ──────┘
-             │
-             ├── Docker Build (vote, result, worker)
-             ├── Trivy Container Scan
-             ├── Push to ECR
-             └── Update values.yaml → ArgoCD auto-sync
-```
-
-## Cleanup
-
-```bash
-cd terraform
-terraform destroy -auto-approve
-```
-
-## Network Architecture
-
-```
-                     Internet
-                        │
-                 Internet Gateway
-                        │
-          ┌─────────────┴─────────────┐
-     Public Subnet 1a            Public Subnet 1b
-     (10.0.1.0/24)              (10.0.2.0/24)
-     [NAT Gateway]              [Load Balancers]
-          │
-          └─────────────┬─────────────┐
-     Private Subnet 1a           Private Subnet 1b
-     (10.0.11.0/24)             (10.0.12.0/24)
-     [EKS Node 1]               [EKS Node 2]
-```
-
-## Security Features
-
-- **OIDC Federation**: No hardcoded AWS credentials in CI/CD
-- **Multi-stage Docker Builds**: Minimal attack surface
-- **3-Layer Security Scanning**: SCA + SAST + Container Scan
-- **Private Subnets**: EKS nodes not exposed to internet
-- **ECR Scan on Push**: Automatic vulnerability detection
-- **ArgoCD Self-Heal**: Auto-reverts unauthorized changes on cluster
-- **Least Privilege IAM**: Separate roles for cluster and nodes
+---
+*For a complete, in-depth architectural walkthrough of every component in this repository, please read the documentation in the `Mentor/` directory.*

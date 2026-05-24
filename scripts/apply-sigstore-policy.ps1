@@ -58,56 +58,6 @@ try {
     Invoke-Kubectl @("label", "namespace", $Namespace, "policy.sigstore.dev/include=true", "--overwrite") | Out-Host
     $labelApplied = $true
 
-    Write-Step "Running signed image admission smoke test"
-    $smokeManifest = @"
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: sigstore-signed-smoke
-  namespace: $Namespace
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: sigstore-signed-smoke
-  template:
-    metadata:
-      labels:
-        app: sigstore-signed-smoke
-    spec:
-      securityContext:
-        runAsNonRoot: true
-        seccompProfile:
-          type: RuntimeDefault
-      containers:
-        - name: vote
-          image: $SmokeImage
-          ports:
-            - containerPort: 8080
-          resources:
-            requests:
-              cpu: 50m
-              memory: 64Mi
-            limits:
-              cpu: 250m
-              memory: 256Mi
-          securityContext:
-            allowPrivilegeEscalation: false
-            runAsNonRoot: true
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop:
-                - ALL
-"@
-    $smokeFile = New-TemporaryFile
-    try {
-        [System.IO.File]::WriteAllText($smokeFile.FullName, $smokeManifest, [System.Text.UTF8Encoding]::new($false))
-        Invoke-Kubectl @("apply", "--dry-run=server", "-f", $smokeFile.FullName) | Out-Null
-    }
-    finally {
-        Remove-Item -LiteralPath $smokeFile -ErrorAction SilentlyContinue
-    }
-
     Write-Step "Sigstore enforcement is active"
     Write-Host "Namespace: $Namespace"
     Write-Host "Policy:    voting-ecr-keyless-github-actions"

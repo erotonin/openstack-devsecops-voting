@@ -37,7 +37,7 @@ resource "random_password" "this" {
   length  = 24
   special = true
   # RDS password không cho phép `/` `@` `"` ` ` (space)
-  override_special = "!#$%&*()-_=+[]{}<>:?"
+  override_special = "!#-_=+"
 }
 
 # ─── Secret ──────────────────────────────────────────────────────

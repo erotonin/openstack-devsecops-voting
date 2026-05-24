@@ -67,7 +67,11 @@ jobs:
               '- [ ] Check Loki logs for the affected pod.',
               '- [ ] Check Prometheus/Grafana for latency, error rate, and restarts.',
               '- [ ] Decide whether optional quarantine mode should be used.',
-              '- [ ] Record containment and recovery timestamps for the report.'
+              '- [ ] Record containment and recovery timestamps for the report.',
+              '',
+              '## Quarantine Action',
+              '',
+              `If quarantine is necessary, [trigger the quarantine workflow](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/workflows/quarantine-pod.yml) and provide the Pod name (\`${pod}\`) and Namespace (\`${namespace}\`).`
             ].join('\n');
 
             await github.rest.issues.create({

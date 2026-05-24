@@ -205,3 +205,24 @@ module "external_secrets_irsa" {
   create_inline_policy = true
   tags                 = local.common_tags
 }
+
+resource "aws_serverlessapplicationrepository_cloudformation_stack" "postgres_rotator" {
+  name           = "postgres-rotator"
+  application_id = "arn:aws:serverlessrepo:us-east-1:297356227824:applications/SecretsManagerRDSPostgreSQLRotationSingleUser"
+  capabilities   = ["CAPABILITY_IAM", "CAPABILITY_RESOURCE_POLICY"]
+  parameters = {
+    endpoint            = "https://secretsmanager.${var.aws_region}.amazonaws.com"
+    functionName        = "rotate-postgres-db"
+    vpcSecurityGroupIds = module.security_groups.rds_sg_id
+    vpcSubnetIds        = join(",", module.networking.private_subnet_ids)
+  }
+}
+
+resource "aws_secretsmanager_secret_rotation" "db_rotation" {
+  secret_id           = module.db_secret.secret_arn
+  rotation_lambda_arn = aws_serverlessapplicationrepository_cloudformation_stack.postgres_rotator.outputs.RotationLambdaARN
+
+  rotation_rules {
+    automatically_after_days = 30
+  }
+}
