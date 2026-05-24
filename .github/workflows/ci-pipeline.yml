@@ -284,8 +284,8 @@ jobs:
         uses: peter-evans/create-pull-request@v6
         with:
           branch: promote/images-${{ github.sha }}
-          title: chore: promote images for ${{ github.sha }}
-          commit-message: chore: promote images for ${{ github.sha }}
+          title: "chore: promote images for ${{ github.sha }}"
+          commit-message: "chore: promote images for ${{ github.sha }}"
           body: |
             Promote signed images built from `${{ github.sha }}`.
 
