@@ -47,6 +47,11 @@ monitoring:
     successRateTarget: 0.99
     p95LatencySeconds: 0.5
     alertFor: 1m
+autoscaling:
+  enabled: false
+  minReplicas: 3
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
 resources:
   vote:
     requests:

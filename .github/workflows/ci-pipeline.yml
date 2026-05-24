@@ -201,6 +201,20 @@ jobs:
     needs: build-scan-sign
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.STAGING_URL != ''
     steps:
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Wait for GitOps rollout
+        run: |
+          aws eks update-kubeconfig --region "${AWS_REGION}" --name voting-app-cluster
+          kubectl -n argocd annotate application voting-aws argocd.argoproj.io/refresh=hard --overwrite
+          kubectl -n voting rollout status deployment/vote --timeout=8m
+          kubectl -n voting rollout status deployment/result --timeout=8m
+          kubectl -n voting rollout status deployment/worker --timeout=8m
+
       - name: OWASP ZAP baseline
         uses: zaproxy/action-baseline@v0.15.0
         with:

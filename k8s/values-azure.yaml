@@ -13,13 +13,13 @@ ingress:
 images:
   vote:
     repository: devsecopsvotingacr7jg8dl.azurecr.io/voting-app-vote
-    tag: 7dbbf9ad93834c049b63ec95163e2963601db02c
+    tag: 6c9e7499526a98cd87225efbf075f37c29be153c
   result:
     repository: devsecopsvotingacr7jg8dl.azurecr.io/voting-app-result
-    tag: 7dbbf9ad93834c049b63ec95163e2963601db02c
+    tag: 6c9e7499526a98cd87225efbf075f37c29be153c
   worker:
     repository: devsecopsvotingacr7jg8dl.azurecr.io/voting-app-worker
-    tag: 7dbbf9ad93834c049b63ec95163e2963601db02c
+    tag: 6c9e7499526a98cd87225efbf075f37c29be153c
   redis:
     repository: redis
     tag: 7-alpine
@@ -54,6 +54,12 @@ monitoring:
     successRateTarget: 0.99
     p95LatencySeconds: 0.5
     alertFor: 1m
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
 
 resources:
   vote:

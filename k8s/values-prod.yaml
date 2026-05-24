@@ -13,13 +13,13 @@ ingress:
 images:
   vote:
     repository: 800557027783.dkr.ecr.us-east-1.amazonaws.com/voting-app-vote
-    tag: 7dbbf9ad93834c049b63ec95163e2963601db02c
+    tag: 6c9e7499526a98cd87225efbf075f37c29be153c
   result:
     repository: 800557027783.dkr.ecr.us-east-1.amazonaws.com/voting-app-result
-    tag: 7dbbf9ad93834c049b63ec95163e2963601db02c
+    tag: 6c9e7499526a98cd87225efbf075f37c29be153c
   worker:
     repository: 800557027783.dkr.ecr.us-east-1.amazonaws.com/voting-app-worker
-    tag: 7dbbf9ad93834c049b63ec95163e2963601db02c
+    tag: 6c9e7499526a98cd87225efbf075f37c29be153c
   redis:
     repository: redis
     tag: 7-alpine
@@ -54,6 +54,12 @@ monitoring:
     successRateTarget: 0.99
     p95LatencySeconds: 0.5
     alertFor: 1m
+
+autoscaling:
+  enabled: false
+  minReplicas: 3
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
 
 resources:
   vote:
