@@ -1,6 +1,6 @@
 {{- if .Values.kyverno.enabled }}
 apiVersion: kyverno.io/v1
-kind: ClusterPolicy
+kind: Policy
 metadata:
   name: verify-image-signatures
   annotations:
