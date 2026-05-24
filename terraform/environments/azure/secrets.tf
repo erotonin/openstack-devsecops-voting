@@ -6,12 +6,6 @@ resource "random_password" "azure_db_password" {
   override_special = "!#$%&*()-_=+[]{}<>:?"
 }
 
-resource "random_password" "azure_redis_password" {
-  length           = 32
-  special          = true
-  override_special = "!#$%&*()-_=+[]{}<>:?"
-}
-
 resource "azurerm_key_vault" "app" {
   name                          = replace("${var.name_prefix}-kv", "-", "")
   location                      = var.location
@@ -36,8 +30,8 @@ resource "azurerm_key_vault_secret" "app_runtime" {
   value = jsonencode({
     REDIS_HOST     = var.azure_redis_host
     REDIS_PORT     = "6379"
-    REDIS_PASSWORD = random_password.azure_redis_password.result
-    REDIS_SSL      = "true"
+    REDIS_PASSWORD = var.azure_redis_password
+    REDIS_SSL      = tostring(var.azure_redis_ssl)
     DB_HOST        = local.azure_db_host_effective
     DB_PORT        = "5432"
     DB_USER        = local.azure_db_user_effective

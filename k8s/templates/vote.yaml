@@ -75,7 +75,7 @@ metadata:
   labels:
     app: vote
 spec:
-  type: {{ .Values.service.type | default "ClusterIP" }}
+  type: {{ .Values.services.vote.type | default .Values.service.type | default "ClusterIP" }}
   ports:
   - port: 80
     targetPort: http

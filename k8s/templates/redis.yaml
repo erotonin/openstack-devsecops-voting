@@ -1,4 +1,4 @@
-{{- if .Values.localDependencies.enabled }}
+{{- if or .Values.localDependencies.enabled .Values.localDependencies.redis.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -13,12 +13,37 @@ spec:
       labels:
         app: redis
     spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: redis
         image: {{ .Values.images.redis.repository }}:{{ .Values.images.redis.tag }}
         ports:
         - containerPort: 6379
           name: redis
+        resources:
+          requests:
+            cpu: 25m
+            memory: 64Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
+        securityContext:
+          runAsUser: 999
+          runAsGroup: 999
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+      volumes:
+      - name: redis-data
+        emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

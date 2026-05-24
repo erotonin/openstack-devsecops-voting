@@ -3,8 +3,14 @@ kyverno:
 replicaCount: 1
 
 service:
-  # LoadBalancer exposes a public IP on AKS so DNS failover can point traffic here
-  type: LoadBalancer
+  type: ClusterIP
+services:
+  vote:
+    # Only vote needs a public endpoint for DNS failover and user traffic.
+    type: LoadBalancer
+  result:
+    # Keep result private on Azure student subscriptions to avoid public IP quota.
+    type: ClusterIP
 
 ingress:
   enabled: false
@@ -48,6 +54,8 @@ serviceAccounts:
 
 localDependencies:
   enabled: false
+  redis:
+    enabled: true
 externalSecret:
   enabled: true
   storeName: azure-key-vault

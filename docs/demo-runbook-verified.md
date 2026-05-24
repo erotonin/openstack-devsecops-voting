@@ -134,7 +134,7 @@ Expected after the current fix:
 - `voting-azure` should become `Synced Healthy`.
 - App pods should be running.
 - The vote service should have an external IP or be reachable by port-forward.
-- The result service may stay pending for public IP quota reasons; use port-forward for demo if needed.
+- The result service is intentionally `ClusterIP` on Azure to avoid student subscription public IP quota. Use port-forward if you need to open it.
 
 Port-forward fallback:
 

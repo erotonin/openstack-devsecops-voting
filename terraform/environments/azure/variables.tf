@@ -114,8 +114,21 @@ variable "azure_postgres_storage_mb" {
 }
 
 variable "azure_redis_host" {
-  description = "Azure Redis host after DR restore. Override this during the DR drill."
-  default     = "restore-required.redis.cache.windows.net"
+  description = "Redis host used by the Azure warm standby app. Defaults to the in-cluster Redis service to avoid extra Azure Redis cost."
+  default     = "redis"
+}
+
+variable "azure_redis_password" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Redis password for Azure standby. Empty for the in-cluster Redis service."
+}
+
+variable "azure_redis_ssl" {
+  type        = bool
+  default     = false
+  description = "Enable TLS for Azure standby Redis. False for the in-cluster Redis service."
 }
 
 variable "azure_bgp_asn" {

@@ -35,6 +35,8 @@ Cross-cloud path
 
 Route53 DNS failover support is implemented in `scripts/configure-route53-failover.ps1`, but it requires a real Route53 hosted zone/domain. The current AWS account has no hosted zone, so public DNS failover is ready as code but not live-configured.
 
+On Azure, only the `vote` service is exposed with a public LoadBalancer by default. The `result` service stays `ClusterIP` to avoid the public IP quota limit in student subscriptions; use `kubectl port-forward` for demo access.
+
 ## Implemented Security Controls
 
 | Area | Implementation |
@@ -195,5 +197,6 @@ az network vnet-gateway list -o table
 
 - Azure ACR uses Basic SKU. Premium-only controls such as private endpoints, geo-replication, image quarantine, and Defender integration are documented as production hardening items.
 - Azure image verification with Kyverno is disabled by default because Kyverno cannot verify private ACR manifests without extra registry credentials. AWS EKS remains the enforced signed-image admission path through Sigstore policy-controller.
+- Azure warm standby uses an in-cluster Redis service to avoid extra managed Redis cost. PostgreSQL state is still replicated with native logical replication.
 - Route53 failover requires a real hosted zone. The script exists, but no hosted zone is currently present in the AWS account.
 - GitHub branch protection is configured, but repository owners/admins can still bypass unless admin bypass is explicitly disabled in GitHub rulesets.

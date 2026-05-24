@@ -41,11 +41,13 @@ flowchart LR
     VNet["VNet 10.1.0.0/16"]
     AKS["AKS devsecops-voting-aks"]
     AppAzure["vote, result, worker\nstandby"]
+    RedisAzure["In-cluster Redis\nwarm standby queue"]
     PG["Azure PostgreSQL Flexible Server\nsubscriber"]
     KV["Azure Key Vault"]
     ESOAzure["External Secrets Operator"]
     VNG["Azure Virtual Network Gateway"]
     AKS --> AppAzure
+    AppAzure --> RedisAzure
     AppAzure --> PG
     KV --> ESOAzure --> AppAzure
     VNet --> AKS

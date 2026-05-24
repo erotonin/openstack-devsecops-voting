@@ -70,7 +70,7 @@ metadata:
   labels:
     app: result
 spec:
-  type: {{ .Values.service.type | default "ClusterIP" }}
+  type: {{ .Values.services.result.type | default .Values.service.type | default "ClusterIP" }}
   ports:
   - port: 80
     targetPort: http

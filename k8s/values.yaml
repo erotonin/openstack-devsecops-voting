@@ -3,6 +3,11 @@ kyverno:
 replicaCount: 1
 service:
   type: ClusterIP
+services:
+  vote:
+    type: ""
+  result:
+    type: ""
 networkPolicy:
   enabled: true
 ingress:
@@ -43,6 +48,8 @@ serviceAccounts:
     annotations: {}
 localDependencies:
   enabled: false
+  redis:
+    enabled: false
 externalSecret:
   enabled: true
   storeName: aws-secrets-manager

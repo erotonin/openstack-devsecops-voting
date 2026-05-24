@@ -94,7 +94,7 @@
   <rect x="1120" y="350" width="250" height="115" class="box"/>
   <text x="1150" y="385" class="h">AKS</text>
   <text x="1150" y="412" class="s">standby app</text>
-  <text x="1150" y="435" class="s">ArgoCD standby</text>
+  <text x="1150" y="435" class="s">ArgoCD standby + Redis</text>
 
   <rect x="880" y="510" width="250" height="85" class="box"/>
   <text x="905" y="545" class="h">Azure PostgreSQL</text>

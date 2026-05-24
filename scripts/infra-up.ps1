@@ -307,7 +307,6 @@ $azureWarmStandbyTargets = @(
     "azurerm_key_vault.app",
     "azurerm_role_assignment.current_key_vault_admin",
     "random_password.azure_db_password",
-    "random_password.azure_redis_password",
     "azurerm_key_vault_secret.app_runtime",
     "module.external_secrets_workload_identity"
 )
