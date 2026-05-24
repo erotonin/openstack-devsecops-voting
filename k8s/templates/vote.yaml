@@ -57,6 +57,7 @@ spec:
 {{ toYaml .Values.resources.vote | indent 10 }}
         securityContext:
           allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           capabilities:
             drop:
             - ALL

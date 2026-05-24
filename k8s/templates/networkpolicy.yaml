@@ -1,0 +1,87 @@
+{{- if .Values.networkPolicy.enabled }}
+# Default deny ingress
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  labels:
+    app: voting-app
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+---
+# Allow external ingress to vote app
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-vote-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app: vote
+  ingress:
+  - {} # Allow all ingress for the LoadBalancer/Ingress to work
+  policyTypes:
+  - Ingress
+---
+# Allow external ingress to result app
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-result-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app: result
+  ingress:
+  - {} # Allow all ingress for the LoadBalancer/Ingress to work
+  policyTypes:
+  - Ingress
+---
+# Allow vote and worker to access redis
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-redis-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: vote
+    - podSelector:
+        matchLabels:
+          app: worker
+    ports:
+    - protocol: TCP
+      port: 6379
+  policyTypes:
+  - Ingress
+---
+# Allow worker and result to access db
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-db-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app: db
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: worker
+    - podSelector:
+        matchLabels:
+          app: result
+    ports:
+    - protocol: TCP
+      port: 5432
+  policyTypes:
+  - Ingress
+{{- end }}

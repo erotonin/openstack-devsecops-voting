@@ -1,6 +1,8 @@
 replicaCount: 1
 service:
   type: ClusterIP
+networkPolicy:
+  enabled: true
 ingress:
   enabled: false
   className: ""
@@ -74,3 +76,4 @@ resources:
     limits:
       cpu: 250m
       memory: 128Mi
+

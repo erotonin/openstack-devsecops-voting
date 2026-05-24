@@ -58,13 +58,13 @@ jobs:
           framework: terraform,kubernetes,dockerfile,github_actions
           quiet: true
           skip_path: tests/policy
-          soft_fail: true
+          soft_fail: false
 
       - name: tfsec Terraform scan
         uses: aquasecurity/tfsec-action@v1.0.3
         with:
           working_directory: terraform
-          soft_fail: true
+          soft_fail: false
 
       - name: Trivy filesystem dependency scan
         uses: aquasecurity/trivy-action@v0.36.0
@@ -305,3 +305,4 @@ jobs:
           echo "This job is the human approval boundary."
           echo "Production should promote a previously signed image digest, not rebuild or deploy from a direct main push."
           echo "ArgoCD production sync is intentionally performed by GitOps, not by committing from CI."
+
