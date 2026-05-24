@@ -92,6 +92,31 @@ jobs:
           helm template voting-app k8s -f k8s/values-prod.yaml > /tmp/voting-prod.yaml
           conftest test --policy policies/conftest /tmp/voting-prod.yaml
 
+  create-issue-on-failure:
+    name: Create issue on security failure
+    runs-on: ubuntu-latest
+    needs: pr-security
+    if: failure() && github.event_name == 'pull_request'
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Create Issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueTitle = '🚨 Security Checks Failed in CI/CD';
+            const issueBody = `Security checks failed for PR #${context.issue.number} ([Link](${context.payload.pull_request.html_url})).
+            Please review the workflow run: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: issueTitle,
+              body: issueBody,
+              labels: ['incident', 'security']
+            });
+
   build-scan-sign:
     name: Build signed staging artifact
     runs-on: ubuntu-latest
