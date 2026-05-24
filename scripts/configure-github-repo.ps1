@@ -59,6 +59,15 @@ Write-Step "Configuring repository secrets"
 & $Gh secret set AZURE_SUBSCRIPTION_ID --repo $Repo --body $azureSubscriptionId | Out-Host
 & $Gh secret set AZURE_TENANT_ID --repo $Repo --body $azureTenantId | Out-Host
 
+Write-Step "Configuring GitHub Actions workflow permissions"
+& $Gh api `
+    --method PUT `
+    -H "Accept: application/vnd.github+json" `
+    -H "X-GitHub-Api-Version: 2022-11-28" `
+    "/repos/$Repo/actions/permissions/workflow" `
+    -f default_workflow_permissions=write `
+    -F can_approve_pull_request_reviews=true | Out-Host
+
 if ($ConfigureBranchProtection) {
     Write-Step "Configuring main branch protection"
     $payload = @{
