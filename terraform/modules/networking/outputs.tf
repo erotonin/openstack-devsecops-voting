@@ -42,3 +42,8 @@ output "private_route_table_ids" {
   description = "Private route table IDs for VPN route propagation"
   value       = aws_route_table.private[*].id
 }
+
+output "database_route_table_ids" {
+  description = "Database route table IDs for VPN route propagation to RDS"
+  value       = aws_route_table.database[*].id
+}

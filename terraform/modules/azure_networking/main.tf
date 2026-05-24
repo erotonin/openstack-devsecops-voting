@@ -42,6 +42,22 @@ resource "azurerm_subnet" "aks" {
 }
 
 # ─── GatewaySubnet — REQUIRED tên "GatewaySubnet" cho Azure VPN GW ──
+resource "azurerm_subnet" "postgres" {
+  name                 = "${var.name_prefix}-snet-postgres"
+  resource_group_name  = azurerm_resource_group.rg.name
+  virtual_network_name = azurerm_virtual_network.vnet.name
+  address_prefixes     = [var.db_subnet_cidr]
+
+  delegation {
+    name = "postgres-flexible-server"
+
+    service_delegation {
+      name    = "Microsoft.DBforPostgreSQL/flexibleServers"
+      actions = ["Microsoft.Network/virtualNetworks/subnets/join/action"]
+    }
+  }
+}
+
 resource "azurerm_subnet" "gateway" {
   name                 = "GatewaySubnet" # Bắt buộc, không đổi
   resource_group_name  = azurerm_resource_group.rg.name

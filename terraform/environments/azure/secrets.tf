@@ -38,13 +38,13 @@ resource "azurerm_key_vault_secret" "app_runtime" {
     REDIS_PORT     = "6379"
     REDIS_PASSWORD = random_password.azure_redis_password.result
     REDIS_SSL      = "true"
-    DB_HOST        = var.azure_db_host
+    DB_HOST        = local.azure_db_host_effective
     DB_PORT        = "5432"
-    DB_USER        = "postgres"
-    DB_PASSWORD    = random_password.azure_db_password.result
-    DB_NAME        = "voting"
-    DB_SSL_MODE    = "Require"
-    DATABASE_URL   = "postgres://postgres:${urlencode(random_password.azure_db_password.result)}@${var.azure_db_host}:5432/voting?sslmode=require"
+    DB_USER        = local.azure_db_user_effective
+    DB_PASSWORD    = local.azure_db_password_effective
+    DB_NAME        = local.azure_db_database_effective
+    DB_SSL_MODE    = local.azure_db_ssl_mode_effective
+    DATABASE_URL   = "postgres://${local.azure_db_user_effective}:${urlencode(local.azure_db_password_effective)}@${local.azure_db_host_effective}:5432/${local.azure_db_database_effective}?sslmode=require"
   })
 
   depends_on = [azurerm_role_assignment.current_key_vault_admin]

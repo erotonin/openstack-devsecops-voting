@@ -19,6 +19,12 @@ variable "aks_subnet_cidr" {
   type        = string
 }
 
+variable "db_subnet_cidr" {
+  description = "CIDR for Azure PostgreSQL Flexible Server delegated subnet"
+  type        = string
+  default     = "10.1.2.0/24"
+}
+
 variable "gateway_subnet_cidr" {
   description = "CIDR cho GatewaySubnet (VPN). Phải /27 hoặc lớn hơn."
   type        = string

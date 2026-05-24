@@ -53,3 +53,23 @@ curl -I https://vote.example.com/healthz
 2. Sync AWS ArgoCD application.
 3. Point DNS back to AWS.
 4. Scale Azure standby back down.
+
+## Automated DNS Failover via Script (Production Path)
+
+Use scripts/configure-route53-failover.ps1 to configure Route53 active-passive failover automatically:
+
+```powershell
+.\scripts\configure-route53-failover.ps1 `
+  -HostedZoneId "Z1234567890ABC" `
+  -RecordName "vote.yourdomain.com" `
+  -FailureSnsTopicArn "arn:aws:sns:us-east-1:800557027783:devsecops-alerts"
+```
+
+The script:
+1. Auto-discovers AWS primary LoadBalancer hostname from kubectl get svc.
+2. Auto-discovers Azure standby LoadBalancer IP (or pass -SecondaryEndpoint for private/internal LBs).
+3. Creates a Route53 Health Check polling /healthz every 10 seconds.
+4. Upserts PRIMARY (AWS) and SECONDARY (Azure) CNAME failover records.
+5. Optionally wires a CloudWatch alarm to SNS for automated compute failover trigger.
+
+Once configured, DNS failover is **fully automatic** — no manual intervention needed when AWS becomes unhealthy.

@@ -14,6 +14,21 @@ locals {
     Module    = "rds"
     ManagedBy = "terraform"
   })
+
+  logical_replication_parameters = var.enable_logical_replication ? {
+    rds_logical_replication = {
+      name  = "rds.logical_replication"
+      value = "1"
+    }
+    max_wal_senders = {
+      name  = "max_wal_senders"
+      value = var.logical_replication_max_wal_senders
+    }
+    max_replication_slots = {
+      name  = "max_replication_slots"
+      value = var.logical_replication_max_replication_slots
+    }
+  } : {}
 }
 
 # ─── KMS key cho RDS ──────────────────────────────────────────────
@@ -68,6 +83,16 @@ resource "aws_db_parameter_group" "main" {
   parameter {
     name  = "log_disconnections"
     value = "1"
+  }
+
+  dynamic "parameter" {
+    for_each = local.logical_replication_parameters
+
+    content {
+      name         = parameter.value.name
+      value        = parameter.value.value
+      apply_method = "pending-reboot"
+    }
   }
 
   tags = local.common_tags

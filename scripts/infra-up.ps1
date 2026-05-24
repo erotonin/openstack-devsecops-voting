@@ -5,6 +5,8 @@ param(
     [switch]$AutoApprove,
     [switch]$SkipValidate,
     [switch]$SkipGitHubConfig,
+    [switch]$EnableAzurePostgresStandby,
+    [switch]$EnablePostgresLogicalReplication,
     [string]$GitHubRepo = "erotonin/devsecops-voting"
 )
 
@@ -230,6 +232,16 @@ aws sts get-caller-identity | Out-Host
 Write-Step "Checking Azure identity"
 az account show --output table | Out-Host
 
+if ($EnableAzurePostgresStandby) {
+    Write-Step "Enabling Azure PostgreSQL standby Terraform resources"
+    $env:TF_VAR_enable_azure_postgres_standby = "true"
+}
+
+if ($EnablePostgresLogicalReplication) {
+    Write-Step "Enabling AWS RDS logical replication Terraform parameters"
+    $env:TF_VAR_enable_postgres_logical_replication = "true"
+}
+
 # First create Azure networking and VPN gateway so AWS can read the Azure VPN public IP.
 Invoke-TerraformApply -Path $AzureEnv -Label "Azure VPN gateway bootstrap" -Targets @(
     "module.azure_networking",
@@ -257,7 +269,8 @@ Invoke-TerraformApply -Path $AwsEnv -Label "AWS primary foundation" -Targets @(
     "aws_customer_gateway.cgw",
     "aws_vpn_gateway.vgw",
     "aws_vpn_connection.vpn",
-    "aws_vpn_gateway_route_propagation.private"
+    "aws_vpn_gateway_route_propagation.private",
+    "aws_vpn_gateway_route_propagation.database"
 )
 
 Update-EksKubeconfig -Path $AwsEnv
@@ -281,7 +294,7 @@ Invoke-Native { & (Join-Path $Root "scripts/apply-gatekeeper-policies.ps1") } "F
 Invoke-TerraformApply -Path $AwsEnv -Label "AWS primary manifests"
 
 # Finish Azure after AWS has written tunnel details to remote state.
-Invoke-TerraformApply -Path $AzureEnv -Label "Azure warm standby foundation" -Targets @(
+$azureWarmStandbyTargets = @(
     "module.azure_networking",
     "azurerm_public_ip.vpn_ip",
     "azurerm_virtual_network_gateway.vng",
@@ -298,6 +311,18 @@ Invoke-TerraformApply -Path $AzureEnv -Label "Azure warm standby foundation" -Ta
     "azurerm_key_vault_secret.app_runtime",
     "module.external_secrets_workload_identity"
 )
+
+if ($EnableAzurePostgresStandby) {
+    $azureWarmStandbyTargets += @(
+        "azurerm_private_dns_zone.postgres[0]",
+        "azurerm_private_dns_zone_virtual_network_link.postgres[0]",
+        "azurerm_postgresql_flexible_server.standby[0]",
+        "azurerm_postgresql_flexible_server_database.voting[0]",
+        "azurerm_postgresql_flexible_server_configuration.wal_level[0]"
+    )
+}
+
+Invoke-TerraformApply -Path $AzureEnv -Label "Azure warm standby foundation" -Targets $azureWarmStandbyTargets
 
 Update-AksKubeconfig -Path $AzureEnv
 
