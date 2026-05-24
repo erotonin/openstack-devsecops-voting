@@ -74,6 +74,6 @@ This map links the project scope to the implementation files.
 
 ## Known Limits
 
-- Cross-cloud live database replication is not implemented; DR uses restore or seed data.
+- Cross-cloud live database replication is implemented as an opt-in native PostgreSQL logical replication path. The cost-capped fallback remains restore or seed data.
 - Auto-quarantine is optional demo mode; default response is alert and human triage.
 - Full enterprise SSO is not implemented yet; ArgoCD RBAC groups are prepared as a baseline.

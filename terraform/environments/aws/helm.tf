@@ -5,6 +5,7 @@ resource "kubernetes_namespace" "voting" {
       "pod-security.kubernetes.io/enforce" = "restricted"
       "pod-security.kubernetes.io/audit"   = "restricted"
       "pod-security.kubernetes.io/warn"    = "restricted"
+      "policy.sigstore.dev/include"        = "true"
     }
   }
 
@@ -561,4 +562,43 @@ resource "helm_release" "kyverno" {
   namespace        = "kyverno"
   create_namespace = true
   version          = "3.1.4" # stable version
+
+  values = [
+    yamlencode({
+      admissionController = {
+        replicas = 1
+      }
+      backgroundController = {
+        enabled = false
+      }
+      cleanupController = {
+        enabled = false
+      }
+      reportsController = {
+        enabled = false
+      }
+      cleanupJobs = {
+        admissionReports = {
+          enabled = false
+        }
+        clusterAdmissionReports = {
+          enabled = false
+        }
+      }
+      features = {
+        admissionReports = {
+          enabled = false
+        }
+        aggregateReports = {
+          enabled = false
+        }
+        policyReports = {
+          enabled = false
+        }
+        backgroundScan = {
+          enabled = false
+        }
+      }
+    })
+  ]
 }

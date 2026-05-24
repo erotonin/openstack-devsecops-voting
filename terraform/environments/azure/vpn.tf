@@ -64,7 +64,7 @@ resource "azurerm_local_network_gateway" "lng" {
   address_space       = [var.aws_vpc_cidr]
 
   bgp_settings {
-    asn = var.aws_bgp_asn
+    asn                 = var.aws_bgp_asn
     bgp_peering_address = local.aws_tunnel1_vgw_inside_address
   }
 }

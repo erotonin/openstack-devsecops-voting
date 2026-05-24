@@ -96,7 +96,7 @@ namespace Worker
 
             var command = connection.CreateCommand();
             command.CommandText = @"CREATE TABLE IF NOT EXISTS votes (
-                                        id VARCHAR(255) NOT NULL UNIQUE,
+                                        id VARCHAR(255) PRIMARY KEY,
                                         vote VARCHAR(255) NOT NULL
                                     )";
             command.ExecuteNonQuery();

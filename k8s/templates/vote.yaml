@@ -35,6 +35,9 @@ spec:
       - name: vote
         image: {{ .Values.images.vote.repository }}:{{ .Values.images.vote.tag }}
         imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
         envFrom:
         - secretRef:
             name: {{ .Values.appSecretName }}
@@ -61,6 +64,9 @@ spec:
           capabilities:
             drop:
             - ALL
+      volumes:
+      - name: tmp
+        emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

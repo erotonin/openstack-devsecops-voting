@@ -133,6 +133,19 @@ CREATE TABLE IF NOT EXISTS votes (
 
 DO `$`$
 BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conrelid = 'public.votes'::regclass
+      AND contype = 'p'
+  ) THEN
+    ALTER TABLE public.votes ADD PRIMARY KEY (id);
+  END IF;
+END
+`$`$;
+
+DO `$`$
+BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '$ReplicationUser') THEN
     CREATE ROLE $ReplicationUser WITH LOGIN PASSWORD '$replicationPasswordSql';
   ELSE
@@ -144,13 +157,21 @@ END
 GRANT rds_replication TO $ReplicationUser;
 GRANT CONNECT ON DATABASE $awsDbDatabase TO $ReplicationUser;
 GRANT USAGE ON SCHEMA public TO $ReplicationUser;
-GRANT SELECT ON ALL TABLES IN SCHEMA public TO $ReplicationUser;
+GRANT SELECT ON TABLE public.votes TO $ReplicationUser;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO $ReplicationUser;
 
 DO `$`$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = '$PublicationName') THEN
     CREATE PUBLICATION $PublicationName FOR TABLE votes;
+  ELSIF NOT EXISTS (
+    SELECT 1
+    FROM pg_publication_tables
+    WHERE pubname = '$PublicationName'
+      AND schemaname = 'public'
+      AND tablename = 'votes'
+  ) THEN
+    ALTER PUBLICATION $PublicationName ADD TABLE votes;
   END IF;
 END
 `$`$;

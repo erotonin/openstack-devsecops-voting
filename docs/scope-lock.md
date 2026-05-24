@@ -105,7 +105,7 @@ SLO demo targets:
 
 ## Explicit Limitations
 
-- Cross-cloud DB replication is not core scope.
+- Cross-cloud DB replication is implemented as an optional DR extension.
 - DR data recovery is backup/restore or seed-restore based.
-- Continuous DB replication is future work.
+- Continuous DB replication uses native PostgreSQL logical replication when `-EnableAzurePostgresStandby` and `-EnablePostgresLogicalReplication` are used.
 - Auto-quarantine is not enabled by default because false positives can harm production workloads.
