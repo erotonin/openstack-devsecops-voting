@@ -19,11 +19,11 @@ on:
           - "true"
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
   security-events: write
   actions: read
-  pull-requests: read
+  pull-requests: write
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
@@ -224,6 +224,73 @@ jobs:
           cmd_options: -I
           allow_issue_writing: false
           artifact_name: zap-staging-report
+
+  open-gitops-promotion-pr:
+    name: Open GitOps promotion PR
+    runs-on: ubuntu-latest
+    needs:
+      - build-scan-sign
+      - dast-staging
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check whether promotion is needed
+        id: promote
+        shell: bash
+        run: |
+          message="$(git log -1 --pretty=%s)"
+          changed="$(git diff-tree --no-commit-id --name-only -r HEAD || true)"
+
+          if [[ "$message" == chore:\ promote\ images* ]]; then
+            echo "should_promote=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          non_gitops="$(printf '%s\n' "$changed" | grep -Ev '^(k8s/values-prod.yaml|k8s/values-azure.yaml)$' || true)"
+          if [ -z "$non_gitops" ]; then
+            echo "should_promote=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "should_promote=true" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials with OIDC
+        if: steps.promote.outputs.should_promote == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        if: steps.promote.outputs.should_promote == 'true'
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Update GitOps image tags
+        if: steps.promote.outputs.should_promote == 'true'
+        shell: pwsh
+        run: |
+          ./scripts/update-gitops-image-tags.ps1 `
+            -ImageTag "${env:IMAGE_TAG}" `
+            -EcrRegistry "${{ steps.ecr.outputs.registry }}" `
+            -AcrLoginServer "${env:ACR_LOGIN_SERVER}"
+
+      - name: Create promotion pull request
+        if: steps.promote.outputs.should_promote == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: promote/images-${{ github.sha }}
+          title: chore: promote images for ${{ github.sha }}
+          commit-message: chore: promote images for ${{ github.sha }}
+          body: |
+            Promote signed images built from `${{ github.sha }}`.
+
+            This PR updates the GitOps values files only. Merge it after reviewing the successful build, scan, SBOM, signing, and DAST jobs.
+          labels: gitops,promotion
 
   production-approval:
     name: Production approval gate

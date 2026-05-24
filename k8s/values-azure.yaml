@@ -56,9 +56,9 @@ monitoring:
     alertFor: 1m
 
 autoscaling:
-  enabled: false
+  enabled: true
   minReplicas: 1
-  maxReplicas: 3
+  maxReplicas: 10
   targetCPUUtilizationPercentage: 70
 
 resources:

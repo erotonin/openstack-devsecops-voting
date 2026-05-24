@@ -3,7 +3,9 @@ param(
     [ValidateSet("full-demo")]
     [string]$Environment = "full-demo",
     [switch]$AutoApprove,
-    [switch]$SkipValidate
+    [switch]$SkipValidate,
+    [switch]$SkipGitHubConfig,
+    [string]$GitHubRepo = "erotonin/devsecops-voting"
 )
 
 $ErrorActionPreference = "Stop"
@@ -171,6 +173,54 @@ function Update-AksKubeconfig {
     }
 }
 
+function Wait-KubernetesServiceHostname {
+    param(
+        [string]$Namespace,
+        [string]$Service,
+        [int]$TimeoutSeconds = 600
+    )
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    do {
+        $hostname = kubectl -n $Namespace get svc $Service -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>$null
+        if ($LASTEXITCODE -eq 0 -and $hostname) {
+            return $hostname
+        }
+
+        $ip = kubectl -n $Namespace get svc $Service -o jsonpath="{.status.loadBalancer.ingress[0].ip}" 2>$null
+        if ($LASTEXITCODE -eq 0 -and $ip) {
+            return $ip
+        }
+
+        Start-Sleep -Seconds 10
+    } while ((Get-Date) -lt $deadline)
+
+    throw "Timed out waiting for $Namespace/$Service LoadBalancer hostname"
+}
+
+function Update-GitHubRepositoryConfig {
+    if ($SkipGitHubConfig) {
+        Write-Step "Skipping GitHub repository configuration"
+        return
+    }
+
+    if (-not (Get-Command gh -ErrorAction SilentlyContinue) -and -not (Test-Path "C:\Program Files\GitHub CLI\gh.exe")) {
+        Write-Warning "GitHub CLI is not installed; skipping GitHub repository configuration."
+        return
+    }
+
+    Write-Step "Configuring GitHub repository secrets and staging URL"
+    Update-EksKubeconfig -Path $AwsEnv
+    $voteHostname = Wait-KubernetesServiceHostname -Namespace "voting" -Service "vote"
+    $stagingUrl = "http://$voteHostname"
+
+    Invoke-Native {
+        & (Join-Path $Root "scripts/configure-github-repo.ps1") `
+            -Repo $GitHubRepo `
+            -StagingUrl $stagingUrl
+    } "Failed to configure GitHub repository variables and secrets"
+}
+
 Write-Step "Checking local prerequisites"
 @("terraform", "aws", "az", "kubectl", "helm") | ForEach-Object { Assert-Command $_ }
 
@@ -218,6 +268,7 @@ Invoke-TerraformApply -Path $AwsEnv -Label "AWS primary controllers" -Targets @(
     "helm_release.external_secrets",
     "helm_release.gatekeeper",
     "helm_release.policy_controller",
+    "helm_release.metrics_server",
     "helm_release.kube_prometheus_stack",
     "helm_release.loki",
     "helm_release.promtail",
@@ -262,5 +313,7 @@ Write-Step "Updating kubeconfig files"
 Update-EksKubeconfig -Path $AwsEnv
 Update-AksKubeconfig -Path $AzureEnv
 
+Update-GitHubRepositoryConfig
+
 Write-Step "Infrastructure apply completed"
-Write-Host "Next: verify ArgoCD, ESO, Gatekeeper, monitoring, logging, and Falco once their modules are added." -ForegroundColor Green
+Write-Host "Next: verify ArgoCD, ESO, Gatekeeper, monitoring, logging, Falco, and the GitHub Actions staging URL." -ForegroundColor Green
