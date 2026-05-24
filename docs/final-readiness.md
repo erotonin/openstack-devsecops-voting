@@ -38,6 +38,7 @@ This file summarizes the final project state for the capstone handoff.
 - Azure Container Registry uses Basic SKU to keep the student demo cost-capped.
 - ACR public access is kept for GitHub-hosted runners and AKS pulls; production should use private endpoints.
 - ACR Premium-only controls such as geo-replication, zone redundancy, retention policy, dedicated data endpoints, and Defender-integrated scanning are documented as production hardening items.
+- Checkov still runs in CI, but enterprise/cost-heavy controls are listed as accepted lab exceptions in `.github/workflows/ci-pipeline.yml`. The project continues to block high-signal failures through Gitleaks, Semgrep, tfsec, Trivy, Helm validation, Conftest, Gatekeeper, Kyverno, and Cosign verification.
 - Cross-cloud database replication is implemented as an opt-in native PostgreSQL logical replication path from AWS RDS to Azure PostgreSQL Flexible Server. It is not enabled by default because it creates extra paid database resources and requires an RDS reboot when enabling the static logical replication parameter.
 - Canary/automated rollback is not enabled; current deployment uses rolling updates, readiness/liveness probes, and GitOps rollback by reverting Git. Production should add Argo Rollouts with Prometheus analysis.
 - AWS EKS should be upgraded from `1.30` to `1.31` before the demo handoff window if time allows, then advanced one minor version at a time. See `docs/eks-upgrade-runbook.md`.
