@@ -191,6 +191,6 @@ variable "falco_slack_webhook_url" {
 
 variable "enable_postgres_logical_replication" {
   type        = bool
-  default     = false
+  default     = true
   description = "Enable AWS RDS logical replication parameters for the Azure standby subscriber."
 }

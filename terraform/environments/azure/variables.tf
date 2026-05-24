@@ -97,7 +97,7 @@ variable "azure_db_host" {
 
 variable "enable_azure_postgres_standby" {
   type        = bool
-  default     = false
+  default     = true
   description = "Create Azure PostgreSQL Flexible Server as the logical replication subscriber."
 }
 

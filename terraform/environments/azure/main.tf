@@ -11,9 +11,11 @@ module "azure_networking" {
 
 # 2. Gọi module tạo cụm AKS
 module "aks" {
-  source              = "../../modules/aks"
-  cluster_name        = var.cluster_name
-  location            = var.location
-  resource_group_name = module.azure_networking.resource_group_name
-  subnet_id           = module.azure_networking.aks_subnet_id
+  source                = "../../modules/aks"
+  cluster_name          = var.cluster_name
+  location              = var.location
+  resource_group_name   = module.azure_networking.resource_group_name
+  subnet_id             = module.azure_networking.aks_subnet_id
+  enable_user_node_pool = true
+  user_vm_size          = "Standard_B2s_v2"
 }

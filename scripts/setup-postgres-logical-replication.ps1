@@ -7,6 +7,7 @@ param(
     [string]$PublicationName = "voting_pub",
     [string]$SubscriptionName = "voting_aws_sub",
     [string]$ReplicationUser = "replicator",
+    [string]$ReplicationSecretName = "devsecops-voting/postgres-replication",
     [string]$ReplicationPassword,
     [switch]$DropExistingSubscription
 )
@@ -56,6 +57,54 @@ function Get-AwsSecretJson {
         --output text
 
     return $secret | ConvertFrom-Json
+}
+
+function Get-OrCreateReplicationPassword {
+    param(
+        [string]$SecretName,
+        [string]$Region
+    )
+
+    if ($ReplicationPassword) {
+        return $ReplicationPassword
+    }
+
+    $previousPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        $existing = aws secretsmanager get-secret-value `
+            --region $Region `
+            --secret-id $SecretName `
+            --query SecretString `
+            --output text 2>$null
+
+        if ($LASTEXITCODE -eq 0 -and $existing) {
+            return (($existing | ConvertFrom-Json).password)
+        }
+    } finally {
+        $ErrorActionPreference = $previousPreference
+    }
+
+    $generatedPassword = "repl-$([guid]::NewGuid().ToString('N'))"
+    $secretString = @{ username = $ReplicationUser; password = $generatedPassword } | ConvertTo-Json -Compress
+    $tmp = New-TemporaryFile
+    try {
+        [System.IO.File]::WriteAllText($tmp.FullName, $secretString, [System.Text.UTF8Encoding]::new($false))
+        aws secretsmanager create-secret `
+            --region $Region `
+            --name $SecretName `
+            --description "PostgreSQL logical replication password for devsecops voting DR" `
+            --secret-string "file://$($tmp.FullName)" | Out-Null
+    } catch {
+        aws secretsmanager put-secret-value `
+            --region $Region `
+            --secret-id $SecretName `
+            --secret-string "file://$($tmp.FullName)" | Out-Null
+    } finally {
+        Remove-Item -LiteralPath $tmp.FullName -ErrorAction SilentlyContinue
+    }
+
+    return $generatedPassword
 }
 
 function Invoke-PsqlInCluster {
@@ -114,10 +163,7 @@ $appRuntimeSecret = az keyvault secret show `
     --output tsv | ConvertFrom-Json
 $azurePgPassword = $appRuntimeSecret.DB_PASSWORD
 
-if (-not $ReplicationPassword) {
-    $ReplicationPassword = "repl-$([guid]::NewGuid().ToString('N'))"
-    Write-Warning "Generated an in-memory replication password. Store it securely if you need to recreate the subscription."
-}
+$ReplicationPassword = Get-OrCreateReplicationPassword -SecretName $ReplicationSecretName -Region $awsRegion
 
 Write-Step "Updating kubeconfig contexts"
 aws eks update-kubeconfig --region $awsRegion --name $awsCluster | Out-Host
@@ -191,6 +237,9 @@ if ($DropExistingSubscription) {
     $dropSql = "DROP SUBSCRIPTION IF EXISTS $SubscriptionName;"
 }
 
+$subscriptionConnection = "host=$awsRdsHost port=5432 dbname=$awsDbDatabase user=$ReplicationUser password=$ReplicationPassword sslmode=require"
+$subscriptionConnectionSql = Escape-SqlLiteral $subscriptionConnection
+
 $subscriberSql = @"
 CREATE TABLE IF NOT EXISTS votes (
   id VARCHAR(255) PRIMARY KEY,
@@ -199,16 +248,14 @@ CREATE TABLE IF NOT EXISTS votes (
 
 $dropSql
 
-DO `$`$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_subscription WHERE subname = '$SubscriptionName') THEN
-    CREATE SUBSCRIPTION $SubscriptionName
-    CONNECTION 'host=$awsRdsHost port=5432 dbname=$awsDbDatabase user=$ReplicationUser password=$replicationPasswordSql sslmode=require'
-    PUBLICATION $PublicationName
-    WITH (copy_data = true, create_slot = true, enabled = true);
-  END IF;
-END
-`$`$;
+SELECT format(
+  'CREATE SUBSCRIPTION %I CONNECTION %L PUBLICATION %I WITH (copy_data = true, create_slot = true, enabled = true)',
+  '$SubscriptionName',
+  '$subscriptionConnectionSql',
+  '$PublicationName'
+)
+WHERE NOT EXISTS (SELECT 1 FROM pg_subscription WHERE subname = '$SubscriptionName')
+\gexec
 "@
 
 Write-Step "Configuring Azure PostgreSQL subscriber"
