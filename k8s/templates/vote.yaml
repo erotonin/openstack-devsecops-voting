@@ -33,7 +33,7 @@ spec:
             app: vote
       containers:
       - name: vote
-        image: {{ .Values.images.vote.repository }}:{{ .Values.images.vote.tag }}
+        image: "{{ .Values.images.vote.repository }}:{{ .Values.images.vote.tag }}{{- with .Values.images.vote.digest }}@{{ . }}{{- end }}"
         imagePullPolicy: IfNotPresent
         volumeMounts:
         - name: tmp

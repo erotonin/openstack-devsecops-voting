@@ -14,12 +14,15 @@ images:
   vote:
     repository: 800557027783.dkr.ecr.us-east-1.amazonaws.com/voting-app-vote
     tag: 6c9e7499526a98cd87225efbf075f37c29be153c
+    digest: sha256:19abc9be79a8a9ef103d93dfdec75b5cbce7742692e66679eee52b9d9613b4bd
   result:
     repository: 800557027783.dkr.ecr.us-east-1.amazonaws.com/voting-app-result
     tag: 6c9e7499526a98cd87225efbf075f37c29be153c
+    digest: sha256:c2063c01a6890d53dbc7ba0df3c196c496a552608f5fbe36d9bf93e32fa757be
   worker:
     repository: 800557027783.dkr.ecr.us-east-1.amazonaws.com/voting-app-worker
     tag: 6c9e7499526a98cd87225efbf075f37c29be153c
+    digest: sha256:5bb5bac8d9031d3c64576a8f0653b23489567bf232682fb9feee10a1dfbd09b7
   redis:
     repository: redis
     tag: 7-alpine

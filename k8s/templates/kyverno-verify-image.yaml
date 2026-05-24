@@ -28,7 +28,7 @@ spec:
         - "*.azurecr.io/voting-app-*"
         - "*.dkr.ecr.*.amazonaws.com/voting-app-*"
         - "ghcr.io/erotonin/voting-app-*"
-        mutateDigest: true
+        mutateDigest: false
         verifyDigest: true
         required: true
         attestors:

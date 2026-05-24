@@ -35,7 +35,7 @@ spec:
             app: result
       containers:
       - name: result
-        image: {{ .Values.images.result.repository }}:{{ .Values.images.result.tag }}
+        image: "{{ .Values.images.result.repository }}:{{ .Values.images.result.tag }}{{- with .Values.images.result.digest }}@{{ . }}{{- end }}"
         imagePullPolicy: IfNotPresent
         envFrom:
         - secretRef:

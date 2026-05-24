@@ -2,7 +2,8 @@
 param(
     [string]$Repo = "erotonin/devsecops-voting",
     [string]$StagingUrl,
-    [switch]$ConfigureBranchProtection
+    [switch]$ConfigureBranchProtection,
+    [switch]$ConfigurePromotionToken
 )
 
 $ErrorActionPreference = "Stop"
@@ -58,6 +59,15 @@ Write-Step "Configuring repository secrets"
 & $Gh secret set AZURE_CLIENT_ID --repo $Repo --body $azureClientId | Out-Host
 & $Gh secret set AZURE_SUBSCRIPTION_ID --repo $Repo --body $azureSubscriptionId | Out-Host
 & $Gh secret set AZURE_TENANT_ID --repo $Repo --body $azureTenantId | Out-Host
+
+if ($ConfigurePromotionToken) {
+    Write-Step "Configuring promotion PR token"
+    $promotionToken = (& $Gh auth token).Trim()
+    if (-not $promotionToken) {
+        throw "Could not read GitHub CLI token for ACTIONS_PR_TOKEN."
+    }
+    & $Gh secret set ACTIONS_PR_TOKEN --repo $Repo --body $promotionToken | Out-Host
+}
 
 Write-Step "Configuring GitHub Actions workflow permissions"
 & $Gh api `

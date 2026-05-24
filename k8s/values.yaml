@@ -15,12 +15,15 @@ images:
   vote:
     repository: voting-app-vote
     tag: dev
+    digest: ""
   result:
     repository: voting-app-result
     tag: dev
+    digest: ""
   worker:
     repository: voting-app-worker
     tag: dev
+    digest: ""
   redis:
     repository: redis
     tag: 7-alpine

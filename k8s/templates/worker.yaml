@@ -35,7 +35,7 @@ spec:
             app: worker
       containers:
       - name: worker
-        image: {{ .Values.images.worker.repository }}:{{ .Values.images.worker.tag }}
+        image: "{{ .Values.images.worker.repository }}:{{ .Values.images.worker.tag }}{{- with .Values.images.worker.digest }}@{{ . }}{{- end }}"
         imagePullPolicy: IfNotPresent
         envFrom:
         - secretRef:
