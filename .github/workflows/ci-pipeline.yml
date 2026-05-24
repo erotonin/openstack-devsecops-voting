@@ -180,12 +180,23 @@ jobs:
         run: |
           docker tag "${{ matrix.service }}:${IMAGE_TAG}" "${ACR_LOGIN_SERVER}/voting-app-${{ matrix.service }}:${IMAGE_TAG}"
 
+      - name: Install Syft
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            echo "Installing Syft (attempt ${attempt}/3)"
+            if curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sudo sh -s -- -b /usr/local/bin v1.42.3; then
+              syft version
+              exit 0
+            fi
+            sleep $((attempt * 10))
+          done
+          echo "Failed to install Syft after retries"
+          exit 1
+
       - name: Generate SBOM
-        uses: anchore/sbom-action@v0
-        with:
-          image: ${{ matrix.service }}:${{ env.IMAGE_TAG }}
-          format: spdx-json
-          output-file: sbom-${{ matrix.service }}.spdx.json
+        run: |
+          syft "${{ matrix.service }}:${IMAGE_TAG}" -o spdx-json=sbom-${{ matrix.service }}.spdx.json
 
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
