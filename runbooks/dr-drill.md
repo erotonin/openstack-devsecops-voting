@@ -55,24 +55,18 @@ Then open:
 http://localhost:8080
 ```
 
-## Data Restore / Seed Options
+## Data Replication
 
-For this student scope, cross-cloud live database replication is not required.
+The current implementation uses native PostgreSQL logical replication:
 
-Allowed demo options:
+- AWS RDS PostgreSQL is the publisher.
+- Azure PostgreSQL Flexible Server is the subscriber.
+- Replication traffic uses the private AWS-Azure IPsec VPN path.
+- The replicated table is `public.votes`.
 
-- Restore database from a prepared dump or cloud snapshot.
-- Seed a small known dataset after app recovery.
-- Use the latest copied backup artifact and record the timestamp as RPO.
+Verify it with `runbooks/postgres-logical-replication.md`.
 
-Record:
-
-- Source backup timestamp.
-- Restore start time.
-- Restore finish time.
-- First successful vote on Azure.
-
-After restoring or preparing the Azure data services, update the runtime secret:
+Backup/restore or seed data remains a fallback path if logical replication is disabled or being rebuilt. In that fallback case, update the Azure runtime secret:
 
 ```powershell
 .\scripts\dr-update-azure-runtime-secret.ps1 `
@@ -117,4 +111,4 @@ az aks nodepool scale `
 - Azure vote UI screenshot or successful curl.
 - ArgoCD Azure application health/sync status.
 - RTO/RPO values.
-- Notes on whether data was restored or seeded.
+- Logical replication status or notes on whether fallback data restore/seed was used.

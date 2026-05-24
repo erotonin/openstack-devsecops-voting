@@ -14,4 +14,3 @@ Scope:
 - The constraints target the `voting` namespace.
 - System namespaces are intentionally excluded.
 - Cosign signature verification is handled separately by Sigstore policy-controller.
-

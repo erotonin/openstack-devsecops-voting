@@ -469,8 +469,8 @@ Say:
 
 - "AWS is primary."
 - "Azure is warm standby."
-- "DR flow: scale/sync AKS, restore or seed data, switch endpoint/DNS, measure RTO/RPO."
-- "For student scope, database replication is represented by restore/seed workflow. Real production should add database-native replication, AWS DMS, or backup shipping."
+- "DR flow: scale/sync AKS, verify PostgreSQL logical replication, switch endpoint/DNS when a hosted zone exists, measure RTO/RPO."
+- "The current build uses native PostgreSQL logical replication from AWS RDS to Azure PostgreSQL. Backup/seed remains a fallback path for cost-capped rebuilds."
 
 ## Part 15 - EKS upgrade readiness
 
@@ -534,4 +534,3 @@ Say:
 - CI/CD does not rely on long-lived cloud credentials.
 - Security exists in multiple layers: pipeline, admission, runtime, and response.
 - DR is measurable with RTO/RPO, even if live database replication is out of student scope.
-

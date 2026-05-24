@@ -44,4 +44,3 @@ resource "aws_vpn_gateway_route_propagation" "database" {
   vpn_gateway_id = aws_vpn_gateway.vgw.id
   route_table_id = module.networking.database_route_table_ids[count.index]
 }
-

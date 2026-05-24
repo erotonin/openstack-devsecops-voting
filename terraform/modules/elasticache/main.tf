@@ -55,4 +55,3 @@ resource "aws_elasticache_replication_group" "redis" {
 
   tags = local.common_tags
 }
-

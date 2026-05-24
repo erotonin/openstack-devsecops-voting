@@ -17,4 +17,3 @@ spec:
           endswith(container.image, ":latest")
           msg := sprintf("container %s uses disallowed latest image tag", [container.name])
         }
-

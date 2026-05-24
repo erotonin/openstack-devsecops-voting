@@ -9,4 +9,3 @@ spec:
         kinds: ["Deployment"]
     namespaces:
       - voting
-

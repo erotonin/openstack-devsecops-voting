@@ -54,4 +54,3 @@ deny[msg] {
   not container.securityContext.allowPrivilegeEscalation == false
   msg := sprintf("deployment %s container %s must set allowPrivilegeEscalation=false", [input.metadata.name, container.name])
 }
-

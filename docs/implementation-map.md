@@ -66,7 +66,8 @@ This map links the project scope to the implementation files.
 | --- | --- |
 | Scale AKS | `scripts/dr-failover.ps1` |
 | Sync Azure app | Azure standby ArgoCD application in `terraform/environments/azure/helm.tf` |
-| Restore/seed data config | `scripts/dr-update-azure-runtime-secret.ps1` |
+| PostgreSQL logical replication | `terraform/environments/aws/main.tf`, `terraform/environments/aws/variables.tf`, `terraform/environments/azure/postgres.tf`, `scripts/setup-postgres-logical-replication.ps1` |
+| Restore/seed fallback config | `scripts/dr-update-azure-runtime-secret.ps1` |
 | Measure RTO/RPO | `runbooks/dr-drill.md` |
 | Rollback plan | `runbooks/rollback.md`, `runbooks/dr-drill.md` |
 | DNS/endpoint switch | `runbooks/dns-failover.md` |
@@ -74,6 +75,6 @@ This map links the project scope to the implementation files.
 
 ## Known Limits
 
-- Cross-cloud live database replication is implemented as an opt-in native PostgreSQL logical replication path. The cost-capped fallback remains restore or seed data.
+- Cross-cloud live database replication is implemented with native PostgreSQL logical replication. The cost-capped fallback remains restore or seed data.
 - Auto-quarantine is optional demo mode; default response is alert and human triage.
 - Full enterprise SSO is not implemented yet; ArgoCD RBAC groups are prepared as a baseline.

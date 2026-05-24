@@ -73,9 +73,9 @@ Show in CI:
 
 Explain:
 
-- Checkov and tfsec are report-only in this student demo because some cost-conscious exceptions are intentional.
-- The project still records those findings and explains the tradeoff.
-- Trivy, Gitleaks, Semgrep, Helm, and Conftest remain blocking.
+- Checkov and tfsec are blocking, with documented lab exceptions for cost-heavy controls.
+- Trivy, Gitleaks, Semgrep, Helm, and Conftest are also blocking.
+- Cost-aware exceptions are written into code/config so the reviewer can see the reasoning.
 
 ## 5. Admission Policy
 
@@ -147,8 +147,8 @@ Talk track:
 
 - AWS is primary.
 - Azure is warm standby.
-- DR uses ArgoCD sync plus seed/restore data for student scope.
-- Cross-cloud live DB replication is documented as future work.
+- DR uses ArgoCD sync plus native PostgreSQL logical replication from AWS RDS to Azure PostgreSQL.
+- Seed/restore remains a fallback if the standby database is disabled to reduce cost.
 
 ## 9. Cost Cleanup
 

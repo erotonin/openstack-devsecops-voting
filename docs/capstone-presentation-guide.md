@@ -212,14 +212,14 @@ Logical replication sends WAL deltas over VPN.
 
 ## Cau Tra Loi Van Dap Nen Nho
 
-- "Tai sao GitOps promotion dung PR, khong auto merge?"  
+- "Tai sao GitOps promotion dung PR, khong auto merge?"
   De giu approval boundary. CI co the build/sign/scan tu dong, nhung production state nen duoc review qua Git.
 
-- "Tai sao logical replication cost-effective?"  
+- "Tai sao logical replication cost-effective?"
   Vi no gui WAL delta cua thay doi, khong copy ca database. Traffic chay qua VPN private path.
 
-- "Tai sao DNS failover chua chay that neu chua co domain?"  
+- "Tai sao DNS failover chua chay that neu chua co domain?"
   Route53 can hosted zone co quyen quan ly DNS. Account hien tai khong co hosted zone, nen script san sang nhung can them domain/zone.
 
-- "Tai sao them node thu 4?"  
+- "Tai sao them node thu 4?"
   EKS node bi gioi han so pod theo instance/IP capacity. Observability + GitOps + policy controllers can pod slots, nen 4 node giup cluster on dinh hon.

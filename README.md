@@ -1,132 +1,199 @@
-# 🚀 DevSecOps Enterprise Voting App (Multi-Cloud)
+# DevSecOps Voting App
 
-![Architecture: Multi-Cloud](https://img.shields.io/badge/Architecture-Multi--Cloud-blue)
-![CI/CD: GitHub Actions](https://img.shields.io/badge/CI%2FCD-GitHub_Actions-2088FF?logo=github-actions&logoColor=white)
-![GitOps: ArgoCD](https://img.shields.io/badge/GitOps-ArgoCD-EF7B4D?logo=argo&logoColor=white)
-![Security: Sigstore+Falco](https://img.shields.io/badge/Security-Sigstore_%7C_Falco_%7C_Gatekeeper-success)
+This repository is a production-inspired DevSecOps capstone for a small voting application. It combines application code, Terraform infrastructure, Kubernetes GitOps deployment, CI/CD security gates, image signing, admission policy, observability, runtime response, and disaster recovery.
 
-A **Production-grade, Multi-Cloud DevSecOps Reference Architecture**. This project deploys a microservices application across **AWS EKS** (Primary) and **Azure AKS** (Standby), connected via an IPsec VPN, featuring a fully automated DevSecOps CI/CD pipeline, Hub-and-Spoke GitOps, Keyless Image Signing, and Automated Incident Response (SOAR).
+The current implementation uses AWS as the active primary site and Azure as the warm standby site. AWS and Azure are connected by a route-based IPsec VPN with BGP. PostgreSQL data is replicated from AWS RDS to Azure PostgreSQL Flexible Server with native PostgreSQL logical replication.
 
-## 🌟 Core Architecture
+## Current Architecture
 
 ```text
-                        [Internet / Users]
-                               │
-                (Route53 / Cloudflare DNS Failover)
-                 ┌─────────────┴─────────────┐
-                 ▼ (Primary)                 ▼ (Warm-Standby)
-        ┌──────────────────┐        ┌──────────────────┐
-        │     AWS EKS      │        │    Azure AKS     │
-        │  [Voting App]    │◄──────►│  [Voting App]    │
-        │  [ArgoCD Hub]────┼─(VPN)──┼─►[ArgoCD Spoke]  │
-        └───────┬──────────┘  BGP   └──────────┬───────┘
-                │                              │
-     (ESO) ◄────┘                              └────► (ESO)
-        ▼                                              ▼
-[AWS Secrets Manager]                         [Azure Key Vault]
-[AWS RDS Postgres]                            [Azure Database]
-[AWS ElastiCache]                                     
+Developers
+  -> pre-commit hooks
+  -> pull request
+  -> GitHub Actions PR security gates
+  -> merge to main
+  -> build, scan, SBOM, sign, push images
+  -> GitOps promotion PR updates Helm values and image digests
+  -> ArgoCD syncs Kubernetes workloads
 ```
-
-## 🔥 Enterprise DevSecOps Features
-
-This repository is built following industry best practices and is divided into 6 distinct phases of maturity:
-
-1. **Multi-Cloud Foundation & VPN:** AWS (Primary) and Azure (Warm-Standby) peered via BGP IPsec VPN. Uses **IRSA** (AWS) and **Workload Identity** (Azure) for passwordless cloud API access.
-2. **Platform & GitOps (Hub-and-Spoke):** 
-   - **ArgoCD** on AWS acts as the central Hub, deploying workloads to both EKS and AKS. 
-   - **Azure Entra ID SSO** provides Role-Based Access Control (RBAC).
-   - **External Secrets Operator (ESO)** bridges cloud secret managers (AWS Secrets Manager / Azure Key Vault) directly to Kubernetes.
-3. **Stateful Managed Services:** Decoupled architecture. The Kubernetes cluster is completely stateless. State is offloaded to managed **AWS RDS (PostgreSQL)** and **AWS ElastiCache (Redis)**. Containers are locked down with `runAsNonRoot` and `capabilities: drop: ALL`.
-4. **Supply Chain Security & Defense-in-Depth:**
-   - **Shift-Left:** `Conftest` checks YAML syntax in Pull Requests.
-   - **Shift-Right:** `OPA Gatekeeper` prevents malicious configurations at the cluster door (e.g., denying `latest` tags, requiring `runAsNonRoot`).
-   - **Sigstore Cosign:** Keyless signature validation. The cluster will *deny* any image that was not built and signed by the official CI/CD pipeline.
-5. **6-Stage Security CI/CD Pipeline:** 
-   - Code Push -> `Gitleaks` (Secret Scan) -> `Semgrep` (SAST) -> `Checkov/tfsec` (IaC Scan) -> `Trivy` (Image Scan) -> `Anchore` (SBOM) -> `OWASP ZAP` (DAST on Staging) -> Human Approval -> Production.
-   - Pushes Docker Images and signatures to **BOTH** AWS ECR and Azure ACR simultaneously using OIDC.
-6. **Observability, SOAR & Disaster Recovery:**
-   - **Observability:** Prometheus, Grafana (with custom SLI/SLO dashboards), Promtail, and Loki.
-   - **SOAR (Automated Response):** `Falco` eBPF detects anomalous container behavior -> Slack Webhook -> GitHub Actions Approval -> Kubernetes `NetworkPolicy` isolates the compromised Pod without killing it (preserving forensics).
-   - **Disaster Recovery:** Automated PowerShell scripts to trigger DNS failover and promote the Azure AKS cluster in case of an AWS region outage.
-
-## 🛠️ Tech Stack
-
-| Layer | Technologies |
-|-------|--------------|
-| **Infrastructure** | Terraform, AWS (VPC, EKS, RDS, ElastiCache), Azure (VNet, AKS) |
-| **Compute / Platform** | Kubernetes, Helm, External Secrets Operator (ESO) |
-| **CI/CD** | GitHub Actions, Multi-Architecture Docker Builds, ArgoCD |
-| **Code Security (SAST)** | Gitleaks, Semgrep, Checkov, tfsec |
-| **Supply Chain Security**| Trivy, Syft (SBOM), Sigstore (Cosign), OPA Gatekeeper, Conftest |
-| **Runtime Security** | Falco (eBPF), Kubernetes Network Policies, Pod Security Context |
-| **Observability** | Prometheus, Grafana, Loki, Promtail |
-
-## 📁 Repository Structure
 
 ```text
-DevSecOps-Voting-App/
-├── .github/workflows/          # CI/CD, SOAR Incident Response, Quarantine Workflows
-├── app/                        # Source code (Vote, Result, Worker)
-├── k8s/                        # Helm charts & K8s Manifests for ArgoCD
-├── Mentor/                     # Deep-dive architectural documentation (Phase 1 to 7)
-├── observability/              # Custom Grafana Dashboards (SLI/SLO)
-├── policies/                   # OPA Gatekeeper constraints, Conftest rules, Sigstore config
-├── response/                   # SOAR Kubernetes isolation NetworkPolicies
-├── runbooks/                   # Disaster Recovery & Failover procedures
-├── scripts/                    # Automation (infra-up, dr-failover, sso-config)
-└── terraform/                  # Multi-cloud IaC
-    ├── environments/aws/       # EKS, RDS, VPN, ArgoCD Hub
-    ├── environments/azure/     # AKS, Key Vault, VPN
-    └── modules/                # Reusable Terraform components
+AWS primary site
+  VPC, EKS, ECR, RDS PostgreSQL, ElastiCache Redis, Secrets Manager
+  ArgoCD, External Secrets Operator, Gatekeeper, Sigstore policy-controller
+  Prometheus/Grafana, Loki/Promtail, Falco/Falcosidekick
+
+Azure warm standby site
+  VNet, AKS, ACR, Azure Key Vault, Azure PostgreSQL Flexible Server
+  ArgoCD standby controller, External Secrets Operator
+
+Cross-cloud path
+  AWS VPN Gateway <-> Azure Virtual Network Gateway
+  BGP routes carry private traffic between the two networks
+  PostgreSQL logical replication sends WAL deltas from AWS to Azure
 ```
 
-## 🚀 Quick Start
+Route53 DNS failover support is implemented in `scripts/configure-route53-failover.ps1`, but it requires a real Route53 hosted zone/domain. The current AWS account has no hosted zone, so public DNS failover is ready as code but not live-configured.
 
-### 1. Prerequisites
-- AWS CLI & Azure CLI configured.
-- Terraform >= 1.5.0
+## Implemented Security Controls
+
+| Area | Implementation |
+| --- | --- |
+| Local pre-commit | `.pre-commit-config.yaml` runs YAML hygiene, Gitleaks, Terraform format/validate, and optional local wrappers for Checkov, Hadolint, yamllint, and Semgrep when those CLIs are installed. CI remains the authoritative security gate. |
+| PR security gates | `.github/workflows/ci-pipeline.yml` runs Gitleaks, Semgrep, Checkov, tfsec, Trivy filesystem scan, Helm render, and Conftest. |
+| Build security | Docker build for `vote`, `result`, and `worker`; Trivy image scan; Syft SPDX SBOM generation. |
+| Signing | Cosign keyless signing through GitHub Actions OIDC/Fulcio. Images are signed by digest, not by mutable tag. |
+| Registry | Images are pushed to AWS ECR and Azure ACR. ECR tags are immutable and scan-on-push is enabled. |
+| GitOps promotion | CI opens a promotion PR that updates `k8s/values-prod.yaml` and `k8s/values-azure.yaml` with the signed image tag and digest. |
+| Admission policy | Gatekeeper rejects unsafe Kubernetes manifests. AWS EKS enforces signed ECR images with Sigstore policy-controller. |
+| Secrets | External Secrets Operator syncs AWS Secrets Manager and Azure Key Vault into Kubernetes. Secrets are not committed in Helm values. |
+| Runtime security | Falco detects suspicious runtime behavior and can open a GitHub incident workflow. Quarantine is a manual approval workflow. |
+| Observability | kube-prometheus-stack, Grafana SLI/SLO dashboard, Loki, Promtail, and PrometheusRule resources. |
+| DR | Azure warm standby, ArgoCD sync, PostgreSQL logical replication, and Route53 failover script when a hosted zone exists. |
+
+## Repository Structure
+
+```text
+.github/workflows/        GitHub Actions pipelines and runtime response workflows
+docs/                     Demo guides, evidence checklist, scope and presentation notes
+healthchecks/             Container health check helpers
+k8s/                      Helm chart, values files, and ArgoCD application manifests
+observability/            Grafana dashboard JSON
+policies/                 Gatekeeper, Conftest, and Sigstore policy definitions
+response/                 Quarantine NetworkPolicy for incident response
+result/                   Node.js result service
+runbooks/                 Apply/destroy, rollback, DR, DNS, and replication runbooks
+scripts/                  PowerShell automation for infra, GitHub, DR, SSO, and verification
+seed-data/                Demo data generation helpers
+terraform/                AWS/Azure Terraform environments and reusable modules
+tests/policy/             Admission-policy negative test fixtures
+vote/                     Python vote service
+worker/                   .NET worker service
+```
+
+Personal lecture notes are intentionally ignored through `.gitignore` (`BaiGiang/`, `Mentor/`, `lectures/`, `notes/`) because they are not needed for the runnable project.
+
+## Prerequisites
+
 - PowerShell 7+
-- A GitHub repository to host this code (for GitHub Actions OIDC).
+- Git
+- GitHub CLI authenticated with `repo` and `workflow` scope
+- AWS CLI authenticated to account `800557027783`
+- Azure CLI authenticated to subscription `007e5e26-e0d0-4389-9cde-5731cdb86639`
+- Terraform
+- kubectl
+- Helm
+- Docker, for local image testing
+- Python with `pre-commit`
 
-### 2. Configure Repositories & SSO
-Run the automated configuration scripts to set up GitHub Secrets (OIDC) and Azure Entra ID App Registrations:
+Install and enable pre-commit:
+
 ```powershell
-.\scripts\configure-github-repo.ps1
-.\scripts\configure-argocd-entra-sso.ps1
+pip install pre-commit
+pre-commit install
+pre-commit run --all-files
 ```
 
-### 3. Deploy Multi-Cloud Infrastructure (~30-40 mins)
-Use the automated wrapper script to deploy AWS, Azure, and the BGP VPN Tunnel sequentially:
+On Windows, the local Semgrep, Checkov, Hadolint, and yamllint hooks use wrapper scripts under `scripts/`. If a CLI is not installed locally, the hook prints a skip message instead of blocking commits. GitHub Actions still runs the real security gates on Linux.
+
+## Deploy
+
+The main apply wrapper stages Terraform so resources that depend on remote-state outputs and Kubernetes CRDs are created in the right order.
+
 ```powershell
-.\scripts\infra-up.ps1
+.\scripts\infra-up.ps1 -AutoApprove
 ```
 
-### 4. Apply Security Policies (Gatekeeper & Sigstore)
+After apply, configure GitHub repository variables/secrets from Terraform outputs:
+
+```powershell
+.\scripts\configure-github-repo.ps1 `
+  -StagingUrl "<AWS vote LoadBalancer URL>" `
+  -ConfigureBranchProtection
+```
+
+Apply or verify admission policies:
+
 ```powershell
 .\scripts\apply-gatekeeper-policies.ps1
-.\scripts\apply-sigstore-policy.ps1
+.\scripts\apply-sigstore-policy.ps1 -Apply
 ```
 
-### 5. Trigger the Pipeline
-Commit code to `main`. Watch the GitHub Actions pipeline perform the 6-stage security scan, build, sign, and push to ECR/ACR. ArgoCD will automatically sync the new version to the cluster.
+Configure PostgreSQL logical replication when the cloud databases are up:
 
-## 💣 Disaster Recovery Drill
-
-To simulate an AWS Outage and failover to Azure:
-1. Review `runbooks/dr-drill.md`.
-2. Execute the failover script:
-   ```powershell
-   .\scripts\dr-failover.ps1
-   ```
-3. The script will sync the RDS password to Azure and promote the AKS cluster to Primary.
-
-## 🧹 Cleanup
-
-To destroy all resources on both clouds and prevent unexpected billing:
 ```powershell
-.\scripts\infra-down.ps1 -AutoApprove
+.\scripts\setup-postgres-logical-replication.ps1
 ```
 
----
-*For a complete, in-depth architectural walkthrough of every component in this repository, please read the documentation in the `Mentor/` directory.*
+## Verify
+
+Run the general stack verifier:
+
+```powershell
+.\scripts\verify-stack.ps1
+```
+
+Quick AWS app health:
+
+```powershell
+$vote = kubectl --context arn:aws:eks:us-east-1:800557027783:cluster/voting-app-cluster `
+  -n voting get svc vote -o jsonpath="{.status.loadBalancer.ingress[0].hostname}"
+Invoke-WebRequest -UseBasicParsing "http://$vote/healthz"
+```
+
+Expected result: HTTP `200` and a JSON body showing `status: ok`.
+
+Check ArgoCD:
+
+```powershell
+kubectl --context arn:aws:eks:us-east-1:800557027783:cluster/voting-app-cluster `
+  -n argocd get application voting-aws
+
+kubectl --context devsecops-voting-aks `
+  -n argocd get application voting-azure
+```
+
+Expected result: AWS should be `Synced Healthy`; Azure should be healthy after the warm-standby sync succeeds.
+
+## Demo Entry Points
+
+Use the verified demo runbook:
+
+```text
+docs/demo-runbook-verified.md
+```
+
+Useful scripts:
+
+```powershell
+.\scripts\test-policy-rejects.ps1 -Context arn:aws:eks:us-east-1:800557027783:cluster/voting-app-cluster
+.\scripts\open-argocd.ps1
+.\scripts\open-grafana.ps1
+.\scripts\run-production-approval.ps1
+.\scripts\dr-failover.ps1 -SkipScale
+```
+
+## Cleanup
+
+Destroy the full demo to avoid cost:
+
+```powershell
+.\destroy.ps1 -AutoApprove
+```
+
+Then check for expensive leftovers:
+
+```powershell
+aws eks list-clusters --region us-east-1
+aws rds describe-db-instances --region us-east-1 --query "DBInstances[].DBInstanceIdentifier"
+aws elasticache describe-replication-groups --region us-east-1 --query "ReplicationGroups[].ReplicationGroupId"
+az aks list -o table
+az network vnet-gateway list -o table
+```
+
+## Known Cost-Aware Decisions
+
+- Azure ACR uses Basic SKU. Premium-only controls such as private endpoints, geo-replication, image quarantine, and Defender integration are documented as production hardening items.
+- Azure image verification with Kyverno is disabled by default because Kyverno cannot verify private ACR manifests without extra registry credentials. AWS EKS remains the enforced signed-image admission path through Sigstore policy-controller.
+- Route53 failover requires a real hosted zone. The script exists, but no hosted zone is currently present in the AWS account.
+- GitHub branch protection is configured, but repository owners/admins can still bypass unless admin bypass is explicitly disabled in GitHub rulesets.

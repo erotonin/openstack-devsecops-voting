@@ -48,6 +48,6 @@ jobs:
         run: |
           echo "Isolating pod ${{ github.event.inputs.pod_name }} in namespace ${{ github.event.inputs.namespace }}..."
           kubectl label pod ${{ github.event.inputs.pod_name }} -n ${{ github.event.inputs.namespace }} security.devsecops/quarantine=true --overwrite
-          
+
           echo "Pod isolated successfully."
           echo "Run 'kubectl describe pod ${{ github.event.inputs.pod_name }} -n ${{ github.event.inputs.namespace }}' to verify."

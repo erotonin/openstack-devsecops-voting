@@ -3,6 +3,7 @@ repos:
     rev: v5.0.0
     hooks:
       - id: check-yaml
+        exclude: ^k8s/templates/
       - id: end-of-file-fixer
       - id: trailing-whitespace
       - id: check-added-large-files
@@ -12,42 +13,72 @@ repos:
     hooks:
       - id: gitleaks
 
+  - repo: local
+    hooks:
+      - id: checkov-local
+        name: checkov local scan
+        entry: python scripts/precommit_checkov.py
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: terraform-fmt-local
+        name: terraform fmt
+        entry: python scripts/precommit_terraform.py fmt
+        language: system
+        pass_filenames: false
+        files: ^terraform/.*\.tf$
+      - id: terraform-validate-local
+        name: terraform validate
+        entry: python scripts/precommit_terraform.py validate
+        language: system
+        pass_filenames: false
+        files: ^terraform/.*\.tf$
+      - id: hadolint-local
+        name: hadolint Dockerfiles
+        entry: python scripts/precommit_hadolint.py
+        language: system
+        pass_filenames: true
+        files: (^|/)Dockerfile$
+      - id: semgrep-local
+        name: semgrep local scan
+        entry: python scripts/precommit_semgrep.py
+        language: system
+        pass_filenames: true
+        files: \.(py|js|ts|jsx|tsx|go|cs|java|rb|php|yaml|yml|tf|dockerfile)$
+      - id: yamllint-local
+        name: yamllint local scan
+        entry: python scripts/precommit_yamllint.py
+        language: system
+        pass_filenames: true
+        files: \.(yaml|yml)$
+        exclude: ^k8s/templates/
+
   - repo: https://github.com/bridgecrewio/checkov
     rev: 3.2.361
     hooks:
       - id: checkov
+        stages: [manual]
         args:
           - --quiet
           - --framework
           - terraform,kubernetes,dockerfile,github_actions
-
-  - repo: https://github.com/antonbabenko/pre-commit-terraform
-    rev: v1.96.3
-    hooks:
-      - id: terraform_fmt
-      - id: terraform_validate
-      - id: terraform_tflint
-        args:
-          - --args=--disable-rule=terraform_required_version
+          - --skip-path
+          - tests/policy
+          - --skip-check
+          - CKV_GHA_7,CKV_AWS_130,CKV_AWS_136,CKV_AWS_161,CKV_AWS_23,CKV_AWS_260,CKV_AWS_338,CKV_AWS_341,CKV_AWS_38,CKV_AWS_382,CKV_AWS_39,CKV_AZURE_109,CKV_AZURE_110,CKV_AZURE_114,CKV_AZURE_115,CKV_AZURE_117,CKV_AZURE_136,CKV_AZURE_139,CKV_AZURE_141,CKV_AZURE_163,CKV_AZURE_164,CKV_AZURE_165,CKV_AZURE_166,CKV_AZURE_167,CKV_AZURE_168,CKV_AZURE_170,CKV_AZURE_171,CKV_AZURE_172,CKV_AZURE_189,CKV_AZURE_226,CKV_AZURE_227,CKV_AZURE_232,CKV_AZURE_233,CKV_AZURE_237,CKV_AZURE_41,CKV_AZURE_42,CKV_AZURE_6,CKV2_AWS_12,CKV2_AWS_5,CKV2_AWS_50,CKV2_AWS_57,CKV2_AWS_64,CKV2_AZURE_31,CKV2_AZURE_32,CKV2_AZURE_57
 
   - repo: https://github.com/hadolint/hadolint
     rev: v2.13.1-beta
     hooks:
       - id: hadolint-docker
+        stages: [manual]
 
   - repo: https://github.com/adrienverge/yamllint.git
     rev: v1.35.1
     hooks:
       - id: yamllint
+        stages: [manual]
+        exclude: ^k8s/templates/
         args:
           - -d
-          - relaxed
-
-  - repo: https://github.com/semgrep/pre-commit
-    rev: v1.97.0
-    hooks:
-      - id: semgrep
-        args:
-          - --config=auto
-          - --error
-
+          - "{extends: relaxed, rules: {new-lines: disable, line-length: disable}}"

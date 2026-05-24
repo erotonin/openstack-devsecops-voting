@@ -2,7 +2,7 @@
 <suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
     <suppress>
         <notes><![CDATA[
-        Legacy AngularJS file in frontend views. Cannot be upgraded without rewriting the entire frontend. 
+        Legacy AngularJS file in frontend views. Cannot be upgraded without rewriting the entire frontend.
         Risk accepted as an exception for this tutorial.
         ]]></notes>
         <packageUrl regex="true">^pkg:javascript/angularjs@.*$</packageUrl>

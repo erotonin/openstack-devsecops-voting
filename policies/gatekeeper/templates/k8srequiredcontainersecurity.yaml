@@ -28,4 +28,3 @@ spec:
           not input.review.object.spec.template.spec.securityContext.runAsNonRoot
           msg := "pod must set securityContext.runAsNonRoot=true"
         }
-

@@ -111,7 +111,7 @@ jobs:
             const issueTitle = 'Security Checks Failed in CI/CD';
             const issueBody = `Security checks failed for PR #${context.issue.number} ([Link](${context.payload.pull_request.html_url})).
             Please review the workflow run: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            
+
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -355,5 +355,3 @@ jobs:
           echo "This job is the human approval boundary."
           echo "Production should promote a previously signed image digest, not rebuild or deploy from a direct main push."
           echo "ArgoCD production sync is intentionally performed by GitOps, not by committing from CI."
-
-

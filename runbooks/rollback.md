@@ -40,4 +40,3 @@ Repeat for `result` or `worker` if needed.
 Argo Rollouts can be added as an advanced demo. It is not required for the core scope.
 
 The core project documents canary as future maturity unless explicitly enabled.
-

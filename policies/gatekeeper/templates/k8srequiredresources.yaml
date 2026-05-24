@@ -35,4 +35,3 @@ spec:
           not container.resources.limits.memory
           msg := sprintf("container %s is missing memory limit", [container.name])
         }
-

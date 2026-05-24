@@ -14,7 +14,7 @@ This project implements a production-like student capstone for a multi-cloud Dev
 - External Secrets Operator syncs secrets from AWS Secrets Manager and Azure Key Vault.
 - Kubernetes admission policies block unsafe workloads.
 - Runtime operations include monitoring, logging, detection, and response.
-- DR is demonstrated by recovering the application on Azure and measuring RTO/RPO.
+- DR is demonstrated by recovering the application on Azure, measuring RTO/RPO, and verifying native PostgreSQL logical replication from AWS to Azure.
 
 ## Production-Like Release Flow
 
@@ -105,7 +105,7 @@ SLO demo targets:
 
 ## Explicit Limitations
 
-- Cross-cloud DB replication is implemented as an optional DR extension.
-- DR data recovery is backup/restore or seed-restore based.
-- Continuous DB replication uses native PostgreSQL logical replication when `-EnableAzurePostgresStandby` and `-EnablePostgresLogicalReplication` are used.
+- Cross-cloud DB replication is implemented with native PostgreSQL logical replication for the `votes` table.
+- Backup/restore or seed-restore remains the fallback if the standby database is intentionally disabled to reduce cost.
+- Route53 DNS failover requires a real hosted zone/domain; the automation script is present but no hosted zone exists in the current AWS account.
 - Auto-quarantine is not enabled by default because false positives can harm production workloads.

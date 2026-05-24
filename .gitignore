@@ -4,20 +4,20 @@
 *.tfstate.backup
 *.tfvars
 
-# Python (cho dịch vụ vote)
+# Python vote service
 **/__pycache__/
 **/*.py[cod]
 **/*$py.class
 **/venv/
 **/.env
 
-# Node.js (cho dịch vụ result)
+# Node.js result service
 **/node_modules/
 **/npm-debug.log
 **/yarn-error.log
 **/.env.local
 
-# .NET (cho dịch vụ worker)
+# .NET worker service
 **/bin/
 **/obj/
 **/*.user
@@ -25,29 +25,30 @@
 **/[Dd]ebug/
 **/[Rr]elease/
 
-# VS Code & OS
+# VS Code and OS
 .vscode/
 .DS_Store
 Thumbs.db
 *.log
 
-# Security & Keys
+# Security and keys
 *.pem
 *.key
 *.cert
 *.rsa
 *.pub
 
-# IDE & Editors
+# IDE and editors
 .idea/
 *.swp
 *.swo
 
-# CI/CD & Scanners
+# CI/CD and scanners
 .scannerwork/
 dependency-check-report.html
 dependency-check-report.xml
 
+# Personal study notes, not required for runtime
 lectures/
 notes/
 BaiGiang/

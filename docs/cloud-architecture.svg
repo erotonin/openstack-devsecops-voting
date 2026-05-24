@@ -1,0 +1,145 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="980" viewBox="0 0 1600 980">
+  <defs>
+    <style>
+      .title { font: 700 28px Arial, sans-serif; fill: #111827; }
+      .h { font: 700 20px Arial, sans-serif; fill: #111827; }
+      .t { font: 15px Arial, sans-serif; fill: #111827; }
+      .s { font: 13px Arial, sans-serif; fill: #374151; }
+      .box { fill: #ffffff; stroke: #334155; stroke-width: 2; rx: 10; }
+      .aws { fill: #fff7ed; stroke: #ea580c; stroke-width: 3; rx: 14; }
+      .az { fill: #eff6ff; stroke: #2563eb; stroke-width: 3; rx: 14; }
+      .sec { fill: #f0fdf4; stroke: #16a34a; stroke-width: 2; rx: 10; }
+      .obs { fill: #f8fafc; stroke: #64748b; stroke-width: 2; rx: 10; }
+      .arrow { stroke: #111827; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+      .dash { stroke: #7c3aed; stroke-width: 2; fill: none; stroke-dasharray: 8 6; marker-end: url(#arrowPurple); }
+      .vpn { stroke: #7c3aed; stroke-width: 4; fill: none; marker-end: url(#arrowPurple); marker-start: url(#arrowPurpleStart); }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#111827" />
+    </marker>
+    <marker id="arrowPurple" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#7c3aed" />
+    </marker>
+    <marker id="arrowPurpleStart" markerWidth="10" markerHeight="10" refX="1" refY="3" orient="auto">
+      <path d="M9,0 L9,6 L0,3 z" fill="#7c3aed" />
+    </marker>
+  </defs>
+
+  <text x="60" y="55" class="title">DevSecOps Voting App - Multi-Cloud Architecture</text>
+
+  <rect x="60" y="95" width="270" height="90" class="box"/>
+  <text x="85" y="130" class="h">Developer</text>
+  <text x="85" y="158" class="t">feature branch, pre-commit</text>
+
+  <rect x="390" y="85" width="350" height="115" class="box"/>
+  <text x="420" y="120" class="h">GitHub Actions CI/CD</text>
+  <text x="420" y="148" class="s">Gitleaks, Semgrep, Checkov, tfsec</text>
+  <text x="420" y="171" class="s">Trivy, Syft SBOM, Cosign, ZAP</text>
+
+  <rect x="820" y="80" width="280" height="125" class="box"/>
+  <text x="850" y="118" class="h">GitOps Promotion PR</text>
+  <text x="850" y="148" class="s">updates Helm image tags</text>
+  <text x="850" y="171" class="s">and immutable digests</text>
+
+  <path d="M330 140 L390 140" class="arrow"/>
+  <path d="M740 142 L820 142" class="arrow"/>
+
+  <rect x="70" y="260" width="690" height="585" class="aws"/>
+  <text x="100" y="300" class="h">AWS Primary Site</text>
+  <text x="100" y="326" class="s">VPC 10.0.0.0/16, public/private/database subnets</text>
+
+  <rect x="110" y="365" width="190" height="80" class="box"/>
+  <text x="135" y="397" class="h">ECR</text>
+  <text x="135" y="423" class="s">signed images</text>
+
+  <rect x="350" y="350" width="250" height="115" class="box"/>
+  <text x="380" y="385" class="h">EKS</text>
+  <text x="380" y="412" class="s">vote, result, worker</text>
+  <text x="380" y="435" class="s">ArgoCD hub</text>
+
+  <rect x="110" y="510" width="190" height="85" class="box"/>
+  <text x="135" y="545" class="h">RDS PostgreSQL</text>
+  <text x="135" y="570" class="s">publisher</text>
+
+  <rect x="350" y="510" width="190" height="85" class="box"/>
+  <text x="375" y="545" class="h">ElastiCache</text>
+  <text x="375" y="570" class="s">Redis</text>
+
+  <rect x="570" y="510" width="150" height="85" class="sec"/>
+  <text x="592" y="545" class="h">Secrets</text>
+  <text x="592" y="570" class="s">AWS SM + ESO</text>
+
+  <rect x="110" y="645" width="250" height="125" class="sec"/>
+  <text x="135" y="680" class="h">Admission Security</text>
+  <text x="135" y="707" class="s">Gatekeeper</text>
+  <text x="135" y="730" class="s">Sigstore policy-controller</text>
+
+  <rect x="410" y="645" width="310" height="125" class="obs"/>
+  <text x="435" y="680" class="h">Observability + Runtime</text>
+  <text x="435" y="707" class="s">Prometheus, Grafana, Loki</text>
+  <text x="435" y="730" class="s">Promtail, Falco, Falcosidekick</text>
+
+  <rect x="590" y="350" width="130" height="80" class="box"/>
+  <text x="612" y="385" class="h">AWS VGW</text>
+  <text x="612" y="410" class="s">BGP VPN</text>
+
+  <rect x="840" y="260" width="690" height="585" class="az"/>
+  <text x="870" y="300" class="h">Azure Warm Standby Site</text>
+  <text x="870" y="326" class="s">VNet 10.1.0.0/16, AKS subnet, GatewaySubnet, PostgreSQL subnet</text>
+
+  <rect x="880" y="365" width="190" height="80" class="box"/>
+  <text x="905" y="397" class="h">ACR</text>
+  <text x="905" y="423" class="s">signed images</text>
+
+  <rect x="1120" y="350" width="250" height="115" class="box"/>
+  <text x="1150" y="385" class="h">AKS</text>
+  <text x="1150" y="412" class="s">standby app</text>
+  <text x="1150" y="435" class="s">ArgoCD standby</text>
+
+  <rect x="880" y="510" width="250" height="85" class="box"/>
+  <text x="905" y="545" class="h">Azure PostgreSQL</text>
+  <text x="905" y="570" class="s">subscriber</text>
+
+  <rect x="1180" y="510" width="190" height="85" class="sec"/>
+  <text x="1205" y="545" class="h">Key Vault</text>
+  <text x="1205" y="570" class="s">ESO sync</text>
+
+  <rect x="1390" y="350" width="110" height="80" class="box"/>
+  <text x="1410" y="385" class="h">VNG</text>
+  <text x="1410" y="410" class="s">BGP VPN</text>
+
+  <rect x="880" y="645" width="300" height="125" class="sec"/>
+  <text x="905" y="680" class="h">Standby Controls</text>
+  <text x="905" y="707" class="s">External Secrets Operator</text>
+  <text x="905" y="730" class="s">Pod Security restricted namespace</text>
+
+  <rect x="1220" y="645" width="280" height="125" class="obs"/>
+  <text x="1245" y="680" class="h">Failover Hooks</text>
+  <text x="1245" y="707" class="s">dr-failover.ps1</text>
+  <text x="1245" y="730" class="s">Route53 script when domain exists</text>
+
+  <path d="M960 205 L960 365" class="arrow"/>
+  <path d="M960 205 L475 350" class="arrow"/>
+  <path d="M300 405 L350 405" class="arrow"/>
+  <path d="M1070 405 L1120 405" class="arrow"/>
+  <path d="M475 465 L205 510" class="arrow"/>
+  <path d="M475 465 L445 510" class="arrow"/>
+  <path d="M540 552 L570 552" class="arrow"/>
+  <path d="M475 465 L235 645" class="arrow"/>
+  <path d="M475 465 L565 645" class="arrow"/>
+  <path d="M1245 465 L1005 510" class="arrow"/>
+  <path d="M1245 465 L1275 510" class="arrow"/>
+  <path d="M1245 465 L1030 645" class="arrow"/>
+
+  <path d="M720 390 C840 300, 1260 300, 1390 390" class="vpn"/>
+  <text x="870" y="285" class="h" fill="#7c3aed">IPsec Site-to-Site VPN + BGP</text>
+
+  <path d="M300 552 C520 900, 850 900, 880 552" class="dash"/>
+  <text x="500" y="905" class="h" fill="#7c3aed">PostgreSQL logical replication: WAL deltas over private VPN</text>
+
+  <rect x="1125" y="85" width="330" height="100" class="box"/>
+  <text x="1155" y="120" class="h">Route53 Failover</text>
+  <text x="1155" y="148" class="s">Script-ready; requires hosted zone/domain</text>
+  <path d="M1125 145 L600 350" class="dash"/>
+  <path d="M1285 185 L1245 350" class="dash"/>
+</svg>

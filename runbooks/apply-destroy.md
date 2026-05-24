@@ -83,4 +83,3 @@ If destroy is stuck:
 5. Re-run `infra-down.ps1`.
 
 Avoid manual console deletion unless Terraform state is already reconciled. Manual deletion can create state drift and make the next apply harder.
-

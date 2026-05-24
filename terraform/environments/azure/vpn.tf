@@ -84,4 +84,3 @@ resource "azurerm_virtual_network_gateway_connection" "vpn_conn" {
     primary = local.aws_tunnel1_cgw_inside_address
   }
 }
-
