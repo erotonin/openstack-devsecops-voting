@@ -483,6 +483,13 @@ resource "kubernetes_manifest" "argocd_app_aws" {
         server    = "https://kubernetes.default.svc"
         namespace = "voting"
       }
+      ignoreDifferences = [
+        {
+          group        = "apps"
+          kind         = "Deployment"
+          jsonPointers = ["/spec/replicas"]
+        }
+      ]
       syncPolicy = {
         automated = {
           prune    = true
