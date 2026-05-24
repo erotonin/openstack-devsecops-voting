@@ -23,6 +23,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "postgres" {
 }
 
 resource "azurerm_postgresql_flexible_server" "standby" {
+  #checkov:skip=CKV_AZURE_136: This server is a cost-controlled warm standby fed by logical replication; geo-redundant backup on the standby is intentionally omitted for the lab.
   count                         = local.azure_postgres_enabled ? 1 : 0
   name                          = local.azure_postgres_server_name
   resource_group_name           = module.azure_networking.resource_group_name

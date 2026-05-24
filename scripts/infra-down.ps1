@@ -197,7 +197,8 @@ function Remove-ProjectSecrets {
     $secretNames = @(
         "devsecops-voting/app-runtime",
         "devsecops-voting/db",
-        "devsecops-voting/redis"
+        "devsecops-voting/redis",
+        "devsecops-voting/postgres-replication"
     )
 
     foreach ($secretName in $secretNames) {
