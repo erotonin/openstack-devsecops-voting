@@ -201,19 +201,20 @@ jobs:
     needs: build-scan-sign
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.STAGING_URL != ''
     steps:
-      - name: Configure AWS credentials with OIDC
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Wait for GitOps rollout
+      - name: Wait for staging endpoint
         run: |
-          aws eks update-kubeconfig --region "${AWS_REGION}" --name voting-app-cluster
-          kubectl -n argocd annotate application voting-aws argocd.argoproj.io/refresh=hard --overwrite
-          kubectl -n voting rollout status deployment/vote --timeout=8m
-          kubectl -n voting rollout status deployment/result --timeout=8m
-          kubectl -n voting rollout status deployment/worker --timeout=8m
+          health_url="${{ vars.STAGING_URL }}/healthz"
+          for attempt in $(seq 1 48); do
+            status="$(curl -ks -o /dev/null -w '%{http_code}' "$health_url" || true)"
+            if [ "$status" = "200" ]; then
+              echo "Staging endpoint is healthy: $health_url"
+              exit 0
+            fi
+            echo "Waiting for staging endpoint ($attempt/48), last status: $status"
+            sleep 10
+          done
+          echo "Staging endpoint did not become healthy: $health_url"
+          exit 1
 
       - name: OWASP ZAP baseline
         uses: zaproxy/action-baseline@v0.15.0
