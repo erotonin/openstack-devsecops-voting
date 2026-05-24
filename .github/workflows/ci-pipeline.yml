@@ -24,6 +24,7 @@ permissions:
   security-events: write
   actions: read
   pull-requests: write
+  issues: write
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
@@ -305,4 +306,5 @@ jobs:
           echo "This job is the human approval boundary."
           echo "Production should promote a previously signed image digest, not rebuild or deploy from a direct main push."
           echo "ArgoCD production sync is intentionally performed by GitOps, not by committing from CI."
+
 

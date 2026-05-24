@@ -553,3 +553,12 @@ resource "kubernetes_manifest" "argocd_app_azure" {
     kubernetes_secret.aks_cluster[0],
   ]
 }
+
+resource "helm_release" "kyverno" {
+  name             = "kyverno"
+  repository       = "https://kyverno.github.io/kyverno/"
+  chart            = "kyverno"
+  namespace        = "kyverno"
+  create_namespace = true
+  version          = "3.1.4" # stable version
+}
