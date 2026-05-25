@@ -111,6 +111,32 @@ resource "azurerm_network_security_group" "aks" {
   }
 
   # Default deny (Azure tự có rule priority 65000, đây là explicit reinforce)
+  # AKS LoadBalancer services receive traffic on nodePort targets.
+  security_rule {
+    name                       = "AllowPublicLoadBalancerNodePorts"
+    priority                   = 130
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "30000-32767"
+    source_address_prefix      = "Internet"
+    destination_address_prefix = var.aks_subnet_cidr
+  }
+
+  # Public LoadBalancer frontend traffic is evaluated before backend DNAT.
+  security_rule {
+    name                       = "AllowPublicHttpLoadBalancer"
+    priority                   = 125
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_ranges    = ["80", "443"]
+    source_address_prefix      = "Internet"
+    destination_address_prefix = "*"
+  }
+
   security_rule {
     name                       = "DenyAllInbound"
     priority                   = 4096
