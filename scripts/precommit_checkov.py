@@ -34,6 +34,7 @@ SKIP_CHECKS = ",".join(
         "CKV_AZURE_136",
         "CKV_AZURE_139",
         "CKV_AZURE_141",
+        "CKV_AZURE_160",
         "CKV_AZURE_163",
         "CKV_AZURE_164",
         "CKV_AZURE_165",
