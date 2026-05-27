@@ -9,7 +9,7 @@ on:
       namespace:
         description: "Namespace of the pod"
         required: true
-        default: "voting"
+        default: "voting-staging"
 
 permissions:
   id-token: write
@@ -41,8 +41,7 @@ jobs:
 
       - name: Apply Quarantine NetworkPolicy
         run: |
-          # Ensure the NetworkPolicy that blocks egress/ingress exists in the cluster
-          kubectl apply -f response/k8s/quarantine-networkpolicy.yaml
+          kubectl apply -n ${{ github.event.inputs.namespace }} -f response/k8s/quarantine-networkpolicy.yaml
 
       - name: Label Pod for Quarantine
         run: |

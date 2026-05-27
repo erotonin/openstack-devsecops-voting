@@ -3,9 +3,11 @@ name: DevSecOps CI/CD
 on:
   pull_request:
     branches:
+      - dev
       - main
   push:
     branches:
+      - dev
       - main
   workflow_dispatch:
     inputs:
@@ -30,12 +32,13 @@ env:
   AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
   ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
   IMAGE_TAG: ${{ github.sha }}
+  STAGING_BRANCH: staging
 
 jobs:
-  pr-security:
-    name: PR security gates
+  feature-pr-light-scan:
+    name: Feature PR light security gates
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && github.base_ref == 'dev'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -52,7 +55,46 @@ jobs:
         with:
           config: auto
 
-      - name: Checkov IaC scan
+      - name: Trivy filesystem dependency scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Fast application sanity checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile vote/app.py
+          npm --prefix result ci
+          npm --prefix result audit --audit-level=high
+          dotnet restore worker/Worker.csproj
+          dotnet build worker/Worker.csproj --configuration Release --no-restore
+
+  dev-integration-security-scan:
+    name: Dev integration security gates
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks full secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Semgrep SAST
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: auto
+
+      - name: Checkov IaC and workflow scan
         uses: bridgecrewio/checkov-action@v12
         with:
           directory: .
@@ -79,10 +121,12 @@ jobs:
           ignore-unfixed: true
           exit-code: "1"
 
-      - name: Helm template validation
+      - name: Helm render validation
         run: |
           helm lint k8s
+          helm template voting-app k8s -f k8s/values-staging.yaml >/tmp/voting-staging.yaml
           helm template voting-app k8s -f k8s/values-prod.yaml >/tmp/voting-prod.yaml
+          helm template voting-app k8s -f k8s/values-azure.yaml >/tmp/voting-azure.yaml
 
       - name: Install Conftest
         run: |
@@ -92,38 +136,144 @@ jobs:
 
       - name: Conftest Kubernetes policy scan
         run: |
-          helm template voting-app k8s -f k8s/values-prod.yaml > /tmp/voting-prod.yaml
+          conftest test --policy policies/conftest /tmp/voting-staging.yaml
           conftest test --policy policies/conftest /tmp/voting-prod.yaml
+          conftest test --policy policies/conftest /tmp/voting-azure.yaml
+
+  release-pr-security-scan:
+    name: Release PR full security gates
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks full secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Semgrep SAST
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: auto
+
+      - name: Checkov IaC and workflow scan
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: .
+          framework: terraform,kubernetes,dockerfile,github_actions
+          quiet: true
+          skip_path: tests/policy
+          skip_check: CKV_GHA_7,CKV_AWS_130,CKV_AWS_136,CKV_AWS_161,CKV_AWS_23,CKV_AWS_260,CKV_AWS_338,CKV_AWS_341,CKV_AWS_38,CKV_AWS_382,CKV_AWS_39,CKV_AZURE_109,CKV_AZURE_110,CKV_AZURE_114,CKV_AZURE_115,CKV_AZURE_117,CKV_AZURE_136,CKV_AZURE_139,CKV_AZURE_141,CKV_AZURE_160,CKV_AZURE_163,CKV_AZURE_164,CKV_AZURE_165,CKV_AZURE_166,CKV_AZURE_167,CKV_AZURE_168,CKV_AZURE_170,CKV_AZURE_171,CKV_AZURE_172,CKV_AZURE_189,CKV_AZURE_226,CKV_AZURE_227,CKV_AZURE_232,CKV_AZURE_233,CKV_AZURE_237,CKV_AZURE_41,CKV_AZURE_42,CKV_AZURE_6,CKV2_AWS_12,CKV2_AWS_5,CKV2_AWS_50,CKV2_AWS_57,CKV2_AWS_64,CKV2_AZURE_31,CKV2_AZURE_32,CKV2_AZURE_57
+          soft_fail: false
+
+      - name: tfsec Terraform scan
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          working_directory: terraform
+          version: v1.28.14
+          github_token: ${{ github.token }}
+          soft_fail: false
+
+      - name: Trivy filesystem dependency scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Helm render validation
+        run: |
+          helm lint k8s
+          helm template voting-app k8s -f k8s/values-staging.yaml >/tmp/voting-staging.yaml
+          helm template voting-app k8s -f k8s/values-prod.yaml >/tmp/voting-prod.yaml
+          helm template voting-app k8s -f k8s/values-azure.yaml >/tmp/voting-azure.yaml
+
+      - name: Install Conftest
+        run: |
+          wget -q https://github.com/open-policy-agent/conftest/releases/download/v0.56.0/conftest_0.56.0_Linux_x86_64.tar.gz
+          tar xzf conftest_0.56.0_Linux_x86_64.tar.gz
+          sudo mv conftest /usr/local/bin/conftest
+
+      - name: Conftest Kubernetes policy scan
+        run: |
+          conftest test --policy policies/conftest /tmp/voting-staging.yaml
+          conftest test --policy policies/conftest /tmp/voting-prod.yaml
+          conftest test --policy policies/conftest /tmp/voting-azure.yaml
 
   create-issue-on-failure:
     name: Create issue on security failure
     runs-on: ubuntu-latest
-    needs: pr-security
-    if: failure() && github.event_name == 'pull_request'
+    needs:
+      - feature-pr-light-scan
+      - dev-integration-security-scan
+      - release-pr-security-scan
+    if: always() && github.event_name == 'pull_request' && (needs.feature-pr-light-scan.result == 'failure' || needs.release-pr-security-scan.result == 'failure')
     permissions:
       issues: write
-      pull-requests: write
+      pull-requests: read
     steps:
       - name: Create Issue
         uses: actions/github-script@v7
         with:
           script: |
-            const issueTitle = 'Security Checks Failed in CI/CD';
-            const issueBody = `Security checks failed for PR #${context.issue.number} ([Link](${context.payload.pull_request.html_url})).
-            Please review the workflow run: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const issueTitle = `Security gate failed for PR #${context.issue.number}`;
+            const issueBody = [
+              `Security checks failed for PR #${context.issue.number}.`,
+              ``,
+              `PR: ${context.payload.pull_request.html_url}`,
+              `Workflow run: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              ``,
+              `Owner action: open the failed job, inspect annotations, fix the finding, and push a new commit to the same branch.`
+            ].join('\n');
 
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: issueTitle,
               body: issueBody,
-              labels: ['incident', 'security']
+              labels: ['incident', 'security', 'ci-failure']
             });
 
-  build-scan-sign:
-    name: Build signed staging artifact
+  classify-main-push:
+    name: Classify main push
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    outputs:
+      build_required: ${{ steps.classify.outputs.build_required }}
+    steps:
+      - name: Checkout release source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Decide whether this is a release build or GitOps-only promotion
+        id: classify
+        shell: bash
+        run: |
+          set -euo pipefail
+          changed="$(git diff-tree --no-commit-id --name-only -r HEAD || true)"
+          non_gitops="$(printf '%s\n' "$changed" | grep -Ev '^(k8s/values-staging.yaml|k8s/values-prod.yaml|k8s/values-azure.yaml)$' || true)"
+
+          if [ -z "$non_gitops" ]; then
+            echo "build_required=false" >> "$GITHUB_OUTPUT"
+            echo "Main push only changed GitOps values; production ArgoCD will sync without rebuilding."
+            exit 0
+          fi
+
+          echo "build_required=true" >> "$GITHUB_OUTPUT"
+          echo "Main push changed release source/config; build, sign, verify, scan, staging, DAST, and promotion are required."
+
+  build-sign-verify-scan:
+    name: Build, sign, verify, and scan image
+    runs-on: ubuntu-latest
+    needs: classify-main-push
+    if: needs.classify-main-push.outputs.build_required == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -132,7 +282,7 @@ jobs:
           - result
           - worker
     steps:
-      - name: Checkout
+      - name: Checkout release source
         uses: actions/checkout@v4
 
       - name: Configure AWS credentials with OIDC
@@ -163,25 +313,6 @@ jobs:
             -t "${{ matrix.service }}:${IMAGE_TAG}" \
             "./${{ matrix.service }}"
 
-      - name: Trivy image scan
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: ${{ matrix.service }}:${{ env.IMAGE_TAG }}
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
-          exit-code: "1"
-
-      - name: Tag image for ECR
-        env:
-          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
-        run: |
-          docker tag "${{ matrix.service }}:${IMAGE_TAG}" "${ECR_REGISTRY}/voting-app-${{ matrix.service }}:${IMAGE_TAG}"
-
-      - name: Tag image for ACR
-        if: env.ACR_LOGIN_SERVER != ''
-        run: |
-          docker tag "${{ matrix.service }}:${IMAGE_TAG}" "${ACR_LOGIN_SERVER}/voting-app-${{ matrix.service }}:${IMAGE_TAG}"
-
       - name: Install Syft
         run: |
           set -euo pipefail
@@ -196,7 +327,7 @@ jobs:
           echo "Failed to install Syft after retries"
           exit 1
 
-      - name: Generate SBOM
+      - name: Generate SBOM from local build artifact
         run: |
           syft "${{ matrix.service }}:${IMAGE_TAG}" -o spdx-json=sbom-${{ matrix.service }}.spdx.json
 
@@ -206,10 +337,21 @@ jobs:
           name: sbom-${{ matrix.service }}
           path: sbom-${{ matrix.service }}.spdx.json
 
+      - name: Tag image for ECR
+        env:
+          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          docker tag "${{ matrix.service }}:${IMAGE_TAG}" "${ECR_REGISTRY}/voting-app-${{ matrix.service }}:${IMAGE_TAG}"
+
+      - name: Tag image for ACR
+        if: env.ACR_LOGIN_SERVER != ''
+        run: |
+          docker tag "${{ matrix.service }}:${IMAGE_TAG}" "${ACR_LOGIN_SERVER}/voting-app-${{ matrix.service }}:${IMAGE_TAG}"
+
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3
 
-      - name: Push ECR image
+      - name: Push ECR image and resolve digest
         id: push_ecr
         env:
           ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
@@ -219,7 +361,7 @@ jobs:
           digest="$(docker inspect --format='{{index .RepoDigests 0}}' "$image" | cut -d'@' -f2)"
           echo "image_digest=${ECR_REGISTRY}/voting-app-${{ matrix.service }}@${digest}" >> "$GITHUB_OUTPUT"
 
-      - name: Push ACR image
+      - name: Push ACR image and resolve digest
         id: push_acr
         if: env.ACR_LOGIN_SERVER != ''
         run: |
@@ -228,20 +370,104 @@ jobs:
           digest="$(docker inspect --format='{{index .RepoDigests 0}}' "$image" | cut -d'@' -f2)"
           echo "image_digest=${ACR_LOGIN_SERVER}/voting-app-${{ matrix.service }}@${digest}" >> "$GITHUB_OUTPUT"
 
-      - name: Cosign sign ECR image
+      - name: Cosign keyless sign ECR digest
         run: cosign sign --yes "${{ steps.push_ecr.outputs.image_digest }}"
 
-      - name: Cosign sign ACR image
+      - name: Cosign keyless sign ACR digest
         if: env.ACR_LOGIN_SERVER != ''
         run: cosign sign --yes "${{ steps.push_acr.outputs.image_digest }}"
 
-  dast-staging:
-    name: DAST staging
+      - name: Verify ECR signature identity and crypto policy
+        run: |
+          bash scripts/verify-cosign-signature-policy.sh \
+            "${{ steps.push_ecr.outputs.image_digest }}" \
+            "https://github.com/${{ github.repository }}/.github/workflows/ci-pipeline.yml@refs/heads/main"
+
+      - name: Verify ACR signature identity and crypto policy
+        if: env.ACR_LOGIN_SERVER != ''
+        run: |
+          bash scripts/verify-cosign-signature-policy.sh \
+            "${{ steps.push_acr.outputs.image_digest }}" \
+            "https://github.com/${{ github.repository }}/.github/workflows/ci-pipeline.yml@refs/heads/main"
+
+      - name: Trivy image scan after signature verification
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ steps.push_ecr.outputs.image_digest }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+  deploy-staging-gitops:
+    name: Deploy staging through ArgoCD GitOps
     runs-on: ubuntu-latest
-    needs: build-scan-sign
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.STAGING_URL != ''
+    needs: build-sign-verify-scan
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
-      - name: Wait for staging endpoint
+      - name: Checkout release source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Azure login with OIDC
+        if: env.ACR_LOGIN_SERVER != ''
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Update staging GitOps branch
+        shell: pwsh
+        run: |
+          ./scripts/update-gitops-image-tags.ps1 `
+            -ImageTag "${env:IMAGE_TAG}" `
+            -EcrRegistry "${{ steps.ecr.outputs.registry }}" `
+            -AcrLoginServer "${env:ACR_LOGIN_SERVER}" `
+            -AwsValuesPath "k8s/values-staging.yaml" `
+            -AzureValuesPath "k8s/values-azure.yaml" `
+            -ResolveDigests
+
+      - name: Push staging environment desired state
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "${STAGING_BRANCH}"
+          git add k8s/values-staging.yaml k8s/values-azure.yaml
+          if git diff --cached --quiet; then
+            echo "Staging GitOps branch already points at ${IMAGE_TAG}."
+            exit 0
+          fi
+          git commit -m "chore: deploy ${IMAGE_TAG} to staging"
+          git push --force-with-lease origin "HEAD:${STAGING_BRANCH}"
+
+  dast-staging:
+    name: DAST staging smoke and baseline scan
+    runs-on: ubuntu-latest
+    needs: deploy-staging-gitops
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Require staging URL
+        if: vars.STAGING_URL == ''
+        run: |
+          echo "STAGING_URL repository variable is required for the smoke test and OWASP ZAP DAST gate."
+          echo "Run scripts/configure-github-repo.ps1 after voting-staging/vote has a LoadBalancer endpoint."
+          exit 1
+
+      - name: Smoke test staging endpoint
+        if: vars.STAGING_URL != ''
         run: |
           health_url="${{ vars.STAGING_URL }}/healthz"
           for attempt in $(seq 1 48); do
@@ -257,6 +483,7 @@ jobs:
           exit 1
 
       - name: OWASP ZAP baseline
+        if: vars.STAGING_URL != ''
         uses: zaproxy/action-baseline@v0.15.0
         with:
           target: ${{ vars.STAGING_URL }}
@@ -269,7 +496,7 @@ jobs:
     name: Open GitOps promotion PR
     runs-on: ubuntu-latest
     needs:
-      - build-scan-sign
+      - build-sign-verify-scan
       - dast-staging
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
@@ -290,7 +517,7 @@ jobs:
             exit 0
           fi
 
-          non_gitops="$(printf '%s\n' "$changed" | grep -Ev '^(k8s/values-prod.yaml|k8s/values-azure.yaml)$' || true)"
+          non_gitops="$(printf '%s\n' "$changed" | grep -Ev '^(k8s/values-staging.yaml|k8s/values-prod.yaml|k8s/values-azure.yaml)$' || true)"
           if [ -z "$non_gitops" ]; then
             echo "should_promote=false" >> "$GITHUB_OUTPUT"
             exit 0
@@ -339,7 +566,7 @@ jobs:
           body: |
             Promote signed images built from `${{ github.sha }}`.
 
-            This PR updates the GitOps values files only. Merge it after reviewing the successful build, scan, SBOM, signing, and DAST jobs.
+            This PR updates the GitOps values files only. Merge it after reviewing the successful build, signature verification, image scan, SBOM, and DAST jobs.
           labels: gitops,promotion
 
   production-approval:

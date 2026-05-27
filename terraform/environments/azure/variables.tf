@@ -131,6 +131,12 @@ variable "azure_redis_ssl" {
   description = "Enable TLS for Azure standby Redis. False for the in-cluster Redis service."
 }
 
+variable "bootstrap_provider_mode" {
+  type        = bool
+  default     = false
+  description = "Use placeholder Kubernetes/Helm provider settings while importing or recovering pre-AKS Azure resources."
+}
+
 variable "azure_bgp_asn" {
   default = 65000
 }

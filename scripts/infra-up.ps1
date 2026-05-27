@@ -108,14 +108,21 @@ function Remove-FailedEksNodeGroup {
         [string]$Region
     )
 
-    $status = aws eks describe-nodegroup `
-        --cluster-name $ClusterName `
-        --nodegroup-name $NodeGroupName `
-        --region $Region `
-        --query "nodegroup.status" `
-        --output text 2>$null
+    $previousPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        $status = aws eks describe-nodegroup `
+            --cluster-name $ClusterName `
+            --nodegroup-name $NodeGroupName `
+            --region $Region `
+            --query "nodegroup.status" `
+            --output text 2>$null
+        $describeExitCode = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $previousPreference
+    }
 
-    if ($LASTEXITCODE -ne 0 -or -not $status) {
+    if ($describeExitCode -ne 0 -or -not $status) {
         return
     }
 
@@ -211,9 +218,20 @@ function Update-GitHubRepositoryConfig {
         return
     }
 
-    Write-Step "Configuring GitHub repository secrets and staging URL"
+    Write-Step "Configuring GitHub repository secrets and baseline branches"
+    Invoke-Native {
+        & (Join-Path $Root "scripts/configure-github-repo.ps1") `
+            -Repo $GitHubRepo
+    } "Failed to configure GitHub repository baseline variables and secrets"
+
+    Write-Step "Configuring GitHub staging URL"
     Update-EksKubeconfig -Path $AwsEnv
-    $voteHostname = Wait-KubernetesServiceHostname -Namespace "voting" -Service "vote"
+    try {
+        $voteHostname = Wait-KubernetesServiceHostname -Namespace "voting-staging" -Service "vote"
+    } catch {
+        Write-Warning "Could not resolve voting-staging/vote LoadBalancer yet. Push the current code, let ArgoCD sync staging, then rerun scripts/configure-github-repo.ps1 with -StagingUrl."
+        return
+    }
     $stagingUrl = "http://$voteHostname"
 
     Invoke-Native {
@@ -277,6 +295,7 @@ Update-EksKubeconfig -Path $AwsEnv
 
 Invoke-TerraformApply -Path $AwsEnv -Label "AWS primary controllers" -Targets @(
     "kubernetes_namespace.voting",
+    "kubernetes_namespace.voting_environment",
     "helm_release.argocd",
     "helm_release.external_secrets",
     "helm_release.gatekeeper",
@@ -327,6 +346,7 @@ Update-AksKubeconfig -Path $AzureEnv
 
 Invoke-TerraformApply -Path $AzureEnv -Label "Azure warm standby controllers" -Targets @(
     "kubernetes_namespace.voting",
+    "kubernetes_namespace.voting_production",
     "helm_release.argocd",
     "helm_release.external_secrets"
 )
