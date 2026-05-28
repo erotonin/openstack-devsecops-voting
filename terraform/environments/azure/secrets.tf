@@ -13,9 +13,14 @@ resource "azurerm_key_vault" "app" {
   tenant_id                     = data.azurerm_client_config.current.tenant_id
   sku_name                      = "standard"
   enable_rbac_authorization     = true
-  purge_protection_enabled      = false
+  purge_protection_enabled      = true
   soft_delete_retention_days    = 7
   public_network_access_enabled = true
+
+  network_acls {
+    bypass         = "AzureServices"
+    default_action = "Allow"
+  }
 }
 
 resource "azurerm_role_assignment" "current_key_vault_admin" {
@@ -25,8 +30,10 @@ resource "azurerm_role_assignment" "current_key_vault_admin" {
 }
 
 resource "azurerm_key_vault_secret" "app_runtime" {
-  name         = "voting-app-runtime"
-  key_vault_id = azurerm_key_vault.app.id
+  name            = "voting-app-runtime"
+  key_vault_id    = azurerm_key_vault.app.id
+  content_type    = "application/json"
+  expiration_date = "2099-12-31T23:59:59Z"
   value = jsonencode({
     REDIS_HOST     = var.azure_redis_host
     REDIS_PORT     = "6379"

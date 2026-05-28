@@ -34,7 +34,7 @@ io.on('connection', function (socket) {
 
 var pool = new Pool({
   connectionString: process.env.DATABASE_URL || `postgres://${process.env.DB_USER || 'postgres'}:${process.env.DB_PASSWORD || 'postgres'}@${process.env.DB_HOST || 'db'}:${process.env.DB_PORT || '5432'}/${process.env.DB_NAME || 'postgres'}`,
-  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false' } : false
 });
 
 async.retry(

@@ -122,4 +122,6 @@ def hello():
 
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=80, debug=True, threaded=True)
+    dev_host = os.getenv("FLASK_RUN_HOST", "127.0.0.1")
+    dev_port = int(os.getenv("FLASK_RUN_PORT", "8080"))
+    app.run(host=dev_host, port=dev_port, debug=False, threaded=True)
