@@ -267,7 +267,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          changed="$(git diff-tree --no-commit-id --name-only -r HEAD || true)"
+          changed="$(git diff --name-only HEAD^1 HEAD || true)"
           non_gitops="$(printf '%s\n' "$changed" | grep -Ev '^(k8s/values-staging.yaml|k8s/values-prod.yaml|k8s/values-azure.yaml)$' || true)"
 
           if [[ -z "$non_gitops" ]]; then
@@ -528,7 +528,7 @@ jobs:
         shell: bash
         run: |
           message="$(git log -1 --pretty=%s)"
-          changed="$(git diff-tree --no-commit-id --name-only -r HEAD || true)"
+          changed="$(git diff --name-only HEAD^1 HEAD || true)"
 
           if [[ "$message" == chore:\ promote\ images* ]]; then
             echo "should_promote=false" >> "$GITHUB_OUTPUT"
