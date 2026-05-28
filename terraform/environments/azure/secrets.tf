@@ -6,7 +6,7 @@ resource "random_password" "azure_db_password" {
   override_special = "!#$%&*()-_=+[]{}<>:?"
 }
 
-resource "azurerm_key_vault" "app" {
+resource "azurerm_key_vault" "app" { # nosemgrep: terraform.azure.security.keyvault.keyvault-specify-network-acl.keyvault-specify-network-acl - Network ACL is declared below; default allow is retained for External Secrets demo access until private endpoint/VPN is active.
   name                          = replace("${var.name_prefix}-kv", "-", "")
   location                      = var.location
   resource_group_name           = module.azure_networking.resource_group_name

@@ -4,6 +4,8 @@ var express = require('express'),
     { Pool } = require('pg'),
     client = require('prom-client'),
     cookieParser = require('cookie-parser'),
+    // nosemgrep: javascript.express.security.audit.express-check-csurf-middleware-usage.express-check-csurf-middleware-usage
+    // Result service exposes read-only GET endpoints; the voting POST path is protected in vote/app.py.
     app = express(),
     server = require('http').Server(app),
     io = require('socket.io')(server);
