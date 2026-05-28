@@ -201,7 +201,7 @@ resource "aws_cloudwatch_log_group" "eks" {
 }
 
 # ─── EKS Cluster ──────────────────────────────────────────────────
-resource "aws_eks_cluster" "main" {
+resource "aws_eks_cluster" "main" { # nosemgrep: terraform.lang.security.eks-public-endpoint-enabled.eks-public-endpoint-enabled - CIDR-scoped public API is retained for bootstrap/demo access until VPN/Bastion access is active.
   name     = var.cluster_name
   role_arn = aws_iam_role.eks_cluster.arn
   version  = var.kubernetes_version
@@ -209,10 +209,8 @@ resource "aws_eks_cluster" "main" {
   vpc_config {
     subnet_ids              = var.subnet_ids
     endpoint_private_access = true
-    # nosemgrep: terraform.lang.security.eks-public-endpoint-enabled.eks-public-endpoint-enabled
-    # The lab keeps a CIDR-scoped public API endpoint for bootstrap/demo access until the VPN/Bastion path is active.
-    endpoint_public_access = var.endpoint_public_access
-    public_access_cidrs    = var.endpoint_public_access ? var.public_access_cidrs : []
+    endpoint_public_access  = var.endpoint_public_access
+    public_access_cidrs     = var.endpoint_public_access ? var.public_access_cidrs : []
   }
 
   # Encryption at-rest cho K8s secrets (etcd)

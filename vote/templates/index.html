@@ -11,7 +11,7 @@
     <div id="content-container">
       <div id="content-container-center">
         <h3>{{option_a}} vs {{option_b}}!</h3>
-        <form id="choice" name='form' method="POST" action="/">
+        <form id="choice" name='form' method="POST" action="/"> {# nosemgrep: python.django.security.django-no-csrf-token.django-no-csrf-token - Flask validates this HMAC token before accepting a vote. #}
           <input type="hidden" name="csrf_token" value="{{csrf_token}}">
           <button id="a" type="submit" name="vote" class="a" value="a" {% if vote == "a" %}disabled{% endif %}>{{option_a}}{% if vote == "a" %} ✓{% endif %}</button>
           <button id="b" type="submit" name="vote" class="b" value="b" {% if vote == "b" %}disabled{% endif %}>{{option_b}}{% if vote == "b" %} ✓{% endif %}</button>

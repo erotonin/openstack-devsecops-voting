@@ -35,7 +35,7 @@ resource "aws_iam_role_policy" "github_actions_ecr" {
     Statement = [
       {
         Effect = "Allow"
-        Action = [
+        Action = [ # nosemgrep: terraform.lang.security.iam.no-iam-creds-exposure.no-iam-creds-exposure - AWS requires ecr:GetAuthorizationToken on "*" for ECR login; push/pull actions are repository scoped below.
           "ecr:GetAuthorizationToken"
         ]
         Resource = "*"
