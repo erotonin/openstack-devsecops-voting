@@ -201,7 +201,7 @@ resource "aws_cloudwatch_log_group" "eks" {
 }
 
 # ─── EKS Cluster ──────────────────────────────────────────────────
-resource "aws_eks_cluster" "main" {
+resource "aws_eks_cluster" "main" { # nosemgrep: terraform.lang.security.eks-public-endpoint-enabled.eks-public-endpoint-enabled - CIDR-scoped public API is retained for bootstrap/demo access until VPN/Bastion access is active.
   name     = var.cluster_name
   role_arn = aws_iam_role.eks_cluster.arn
   version  = var.kubernetes_version

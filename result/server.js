@@ -3,6 +3,7 @@ var express = require('express'),
     path = require('path'),
     { Pool } = require('pg'),
     client = require('prom-client'),
+    csrf = require('csurf'),
     cookieParser = require('cookie-parser'),
     app = express(),
     server = require('http').Server(app),
@@ -34,7 +35,7 @@ io.on('connection', function (socket) {
 
 var pool = new Pool({
   connectionString: process.env.DATABASE_URL || `postgres://${process.env.DB_USER || 'postgres'}:${process.env.DB_PASSWORD || 'postgres'}@${process.env.DB_HOST || 'db'}:${process.env.DB_PORT || '5432'}/${process.env.DB_NAME || 'postgres'}`,
-  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false' } : false
 });
 
 async.retry(
@@ -80,6 +81,14 @@ function collectVotesFromResult(result) {
 }
 
 app.use(cookieParser());
+app.use(express.urlencoded({ extended: false, limit: process.env.URLENCODED_LIMIT || '10kb' }));
+app.use(csrf({
+  cookie: {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.COOKIE_SECURE !== 'false'
+  }
+}));
 app.use(function (_req, res, next) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
@@ -106,8 +115,15 @@ app.use(function (req, res, next) {
   });
   next();
 });
-app.use(express.urlencoded({ extended: false, limit: process.env.URLENCODED_LIMIT || '10kb' }));
 app.use(express.static(__dirname + '/views'));
+
+app.use(function (err, _req, res, next) {
+  if (err.code !== 'EBADCSRFTOKEN') {
+    return next(err);
+  }
+
+  res.status(403).json({ error: 'invalid csrf token' });
+});
 
 app.get('/healthz', function (req, res) {
   res.status(200).json({ status: 'ok', service: 'result' });

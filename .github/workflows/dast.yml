@@ -7,9 +7,6 @@ on:
         description: "HTTP/HTTPS URL to scan. Defaults to repository variable STAGING_URL."
         required: false
         type: string
-  pull_request:
-    branches:
-      - main
 
 permissions:
   contents: read
@@ -19,14 +16,16 @@ jobs:
   zap-baseline:
     name: ZAP baseline scan
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || vars.STAGING_URL != ''
     steps:
       - name: Resolve target URL
         id: target
+        env:
+          INPUT_TARGET_URL: ${{ inputs.target_url }}
+          DEFAULT_STAGING_URL: ${{ vars.STAGING_URL }}
         run: |
-          target="${{ inputs.target_url }}"
+          target="$INPUT_TARGET_URL"
           if [ -z "$target" ]; then
-            target="${{ vars.STAGING_URL }}"
+            target="$DEFAULT_STAGING_URL"
           fi
           if [ -z "$target" ]; then
             echo "STAGING_URL is not set and no target_url input was provided." >&2

@@ -7,7 +7,7 @@ param(
 
     [string]$AwsKubeContext = "arn:aws:eks:us-east-1:800557027783:cluster/voting-app-cluster",
     [string]$AzureKubeContext = "devsecops-voting-aks",
-    [string]$Namespace = "voting",
+    [string]$Namespace = "voting-production",
     [string]$ServiceName = "vote",
     [string]$HealthPath = "/healthz",
     [int]$Ttl = 30,

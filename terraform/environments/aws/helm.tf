@@ -12,6 +12,22 @@ resource "kubernetes_namespace" "voting" {
   depends_on = [module.eks]
 }
 
+resource "kubernetes_namespace" "voting_environment" {
+  for_each = toset(["voting-staging", "voting-production"])
+
+  metadata {
+    name = each.key
+    labels = {
+      "pod-security.kubernetes.io/enforce" = "restricted"
+      "pod-security.kubernetes.io/audit"   = "restricted"
+      "pod-security.kubernetes.io/warn"    = "restricted"
+      "policy.sigstore.dev/include"        = "true"
+    }
+  }
+
+  depends_on = [module.eks]
+}
+
 locals {
   argocd_rbac_policy = join("\n", concat(
     [for group in var.argocd_sso_admin_groups : "g, ${group}, role:admin"],
@@ -428,11 +444,15 @@ resource "kubernetes_manifest" "argocd_project_voting" {
       ]
       destinations = [
         {
-          namespace = "voting"
+          namespace = "voting-staging"
           server    = "https://kubernetes.default.svc"
         },
         {
-          namespace = "voting"
+          namespace = "voting-production"
+          server    = "https://kubernetes.default.svc"
+        },
+        {
+          namespace = "voting-production"
           name      = "devsecops-voting-aks"
         }
       ]
@@ -463,7 +483,7 @@ resource "kubernetes_manifest" "argocd_app_aws" {
     apiVersion = "argoproj.io/v1alpha1"
     kind       = "Application"
     metadata = {
-      name      = "voting-aws"
+      name      = "voting-staging"
       namespace = "argocd"
       finalizers = [
         "resources-finalizer.argocd.argoproj.io"
@@ -473,15 +493,15 @@ resource "kubernetes_manifest" "argocd_app_aws" {
       project = "voting"
       source = {
         repoURL        = var.gitops_repo_url
-        targetRevision = var.gitops_target_revision
+        targetRevision = var.gitops_staging_revision
         path           = "k8s"
         helm = {
-          valueFiles = ["values-prod.yaml"]
+          valueFiles = ["values-staging.yaml"]
         }
       }
       destination = {
         server    = "https://kubernetes.default.svc"
-        namespace = "voting"
+        namespace = "voting-staging"
       }
       ignoreDifferences = [
         {
@@ -505,7 +525,59 @@ resource "kubernetes_manifest" "argocd_app_aws" {
   depends_on = [
     helm_release.argocd,
     kubernetes_manifest.argocd_project_voting,
-    kubernetes_namespace.voting,
+    kubernetes_namespace.voting_environment["voting-staging"],
+    kubernetes_manifest.aws_secret_store,
+  ]
+}
+
+resource "kubernetes_manifest" "argocd_app_aws_production" {
+  manifest = {
+    apiVersion = "argoproj.io/v1alpha1"
+    kind       = "Application"
+    metadata = {
+      name      = "voting-production"
+      namespace = "argocd"
+      finalizers = [
+        "resources-finalizer.argocd.argoproj.io"
+      ]
+    }
+    spec = {
+      project = "voting"
+      source = {
+        repoURL        = var.gitops_repo_url
+        targetRevision = var.gitops_target_revision
+        path           = "k8s"
+        helm = {
+          valueFiles = ["values-prod.yaml"]
+        }
+      }
+      destination = {
+        server    = "https://kubernetes.default.svc"
+        namespace = "voting-production"
+      }
+      ignoreDifferences = [
+        {
+          group        = "apps"
+          kind         = "Deployment"
+          jsonPointers = ["/spec/replicas"]
+        }
+      ]
+      syncPolicy = {
+        automated = {
+          prune    = true
+          selfHeal = true
+        }
+        syncOptions = [
+          "CreateNamespace=true"
+        ]
+      }
+    }
+  }
+
+  depends_on = [
+    helm_release.argocd,
+    kubernetes_manifest.argocd_project_voting,
+    kubernetes_namespace.voting_environment["voting-production"],
     kubernetes_manifest.aws_secret_store,
   ]
 }
@@ -535,7 +607,7 @@ resource "kubernetes_manifest" "argocd_app_azure" {
       }
       destination = {
         name      = "devsecops-voting-aks"
-        namespace = "voting"
+        namespace = "voting-production"
       }
       syncPolicy = {
         syncOptions = [

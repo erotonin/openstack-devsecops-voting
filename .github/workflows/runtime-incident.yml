@@ -20,7 +20,7 @@ on:
       namespace:
         description: Kubernetes namespace
         required: false
-        default: voting
+        default: voting-staging
       details:
         description: Incident details
         required: false
@@ -42,7 +42,7 @@ jobs:
             const input = context.payload.inputs || {};
 
             const severity = payload.severity || input.severity || 'warning';
-            const namespace = payload.namespace || input.namespace || 'voting';
+            const namespace = payload.namespace || input.namespace || 'voting-staging';
             const pod = payload.pod || input.pod || 'unknown';
             const title = payload.title || input.title || `Falco runtime alert in ${namespace}`;
             const details = payload.details || payload.output || input.details || 'No additional details were provided.';
