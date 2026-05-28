@@ -27,6 +27,8 @@ resource "aws_vpn_connection" "vpn" {
   customer_gateway_id = aws_customer_gateway.cgw.id
   type                = "ipsec.1"
   static_routes_only  = false
+  tunnel1_inside_cidr = "169.254.21.96/30"
+  tunnel2_inside_cidr = "169.254.22.96/30"
 
   tags = merge(local.common_tags, {
     Name = "${var.name_prefix}-aws-azure-bgp"

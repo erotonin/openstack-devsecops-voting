@@ -9,12 +9,19 @@ The current implementation uses AWS as the active primary site and Azure as the 
 ```text
 Developers
   -> pre-commit hooks
-  -> pull request
-  -> GitHub Actions PR security gates
-  -> merge to main
-  -> build, scan, SBOM, sign, push images
-  -> GitOps promotion PR updates Helm values and image digests
-  -> ArgoCD syncs Kubernetes workloads
+  -> feature pull request into dev
+  -> light feature security gate
+  -> merge to dev
+  -> integration security gate on combined work
+  -> release pull request from dev into main
+  -> full release gate on final code and deploy config
+  -> build images, generate SBOM, push immutable digests
+  -> Cosign keyless sign and verify identity plus crypto policy
+  -> Trivy image scan by digest
+  -> ArgoCD syncs staging from the staging GitOps branch
+  -> smoke test and OWASP ZAP DAST against staging
+  -> GitOps promotion PR updates production Helm values and image digests
+  -> ArgoCD syncs production from main after review
 ```
 
 ```text
@@ -42,11 +49,12 @@ On Azure, only the `vote` service is exposed with a public LoadBalancer by defau
 | Area | Implementation |
 | --- | --- |
 | Local pre-commit | `.pre-commit-config.yaml` runs YAML hygiene, Gitleaks, Terraform format/validate, and optional local wrappers for Checkov, Hadolint, yamllint, and Semgrep when those CLIs are installed. CI remains the authoritative security gate. |
-| PR security gates | `.github/workflows/ci-pipeline.yml` runs Gitleaks, Semgrep, Checkov, tfsec, Trivy filesystem scan, Helm render, and Conftest. |
-| Build security | Docker build for `vote`, `result`, and `worker`; Trivy image scan; Syft SPDX SBOM generation. |
-| Signing | Cosign keyless signing through GitHub Actions OIDC/Fulcio. Images are signed by digest, not by mutable tag. |
+| PR security gates | Feature PRs into `dev` run fast feedback checks. Release PRs into `main` run full SAST, IaC, dependency, Helm render, and policy checks before release build is allowed. |
+| Build security | Docker build for `vote`, `result`, and `worker`; Syft SPDX SBOM generation; Trivy image scan after signature verification. |
+| Signing | Cosign keyless signing through GitHub Actions OIDC/Fulcio. Images are signed by digest, not mutable tag. CI verifies the certificate identity and rejects weak certificate/signature algorithms before scanning and promotion. |
 | Registry | Images are pushed to AWS ECR and Azure ACR. ECR tags are immutable and scan-on-push is enabled. |
-| GitOps promotion | CI opens a promotion PR that updates `k8s/values-prod.yaml` and `k8s/values-azure.yaml` with the signed image tag and digest. |
+| GitOps staging | After main build/sign/verify/scan, CI updates the `staging` branch with `k8s/values-staging.yaml`. The AWS ArgoCD staging app tracks that branch and deploys to `voting-staging`. |
+| GitOps production | After staging smoke test and ZAP DAST, CI opens a promotion PR that updates `k8s/values-prod.yaml` and `k8s/values-azure.yaml` on `main`. The AWS and Azure production ArgoCD apps deploy only after that PR is reviewed and merged. |
 | Admission policy | Gatekeeper rejects unsafe Kubernetes manifests. AWS EKS enforces signed ECR images with Sigstore policy-controller. |
 | Secrets | External Secrets Operator syncs AWS Secrets Manager and Azure Key Vault into Kubernetes. Secrets are not committed in Helm values. |
 | Runtime security | Falco detects suspicious runtime behavior and can open a GitHub incident workflow. Quarantine is a manual approval workflow. |
@@ -121,6 +129,14 @@ Apply or verify admission policies:
 .\scripts\apply-sigstore-policy.ps1 -Apply
 ```
 
+The Sigstore policy is applied to `voting-staging` and `voting-production`. The CI signing sequence is intentionally digest-based:
+
+```text
+build image -> push registry -> resolve digest -> cosign sign digest -> cosign verify identity and crypto policy -> trivy scan digest
+```
+
+Cosign verifies signature identity and certificate metadata. Trivy scans vulnerabilities; it does not verify signatures.
+
 Configure PostgreSQL logical replication when the cloud databases are up:
 
 ```powershell
@@ -139,7 +155,7 @@ Quick AWS app health:
 
 ```powershell
 $vote = kubectl --context arn:aws:eks:us-east-1:800557027783:cluster/voting-app-cluster `
-  -n voting get svc vote -o jsonpath="{.status.loadBalancer.ingress[0].hostname}"
+  -n voting-staging get svc vote -o jsonpath="{.status.loadBalancer.ingress[0].hostname}"
 Invoke-WebRequest -UseBasicParsing "http://$vote/healthz"
 ```
 
@@ -149,20 +165,21 @@ Check ArgoCD:
 
 ```powershell
 kubectl --context arn:aws:eks:us-east-1:800557027783:cluster/voting-app-cluster `
-  -n argocd get application voting-aws
+  -n argocd get application voting-staging voting-production
 
 kubectl --context devsecops-voting-aks `
-  -n argocd get application voting-azure
+  -n argocd get application voting-azure-production
 ```
 
-Expected result: AWS should be `Synced Healthy`; Azure should be healthy after the warm-standby sync succeeds.
+Expected result: AWS staging and production should be `Synced Healthy`; Azure production should be healthy after the warm-standby sync succeeds.
 
 ## Demo Entry Points
 
 Use the verified demo runbook:
 
 ```text
-docs/demo-runbook-verified.md
+docs/teacher-aligned-demo-runbook.md
+docs/devsecops-phase-model.md
 ```
 
 Useful scripts:

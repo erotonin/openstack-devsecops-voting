@@ -34,15 +34,24 @@ namespace Worker
                     Thread.Sleep(100);
 
                     // Reconnect redis if down
-                    if (redisConn == null || !redisConn.IsConnected) {
+                    if (redisConn == null || !redisConn.IsConnected)
+                    {
                         Console.WriteLine("Reconnecting Redis");
                         redisConn = OpenRedisConnection(redisConnectionString);
                         redis = redisConn.GetDatabase();
                     }
-                    string json = redis.ListLeftPopAsync("votes").Result;
-                    if (json != null)
+
+                    var entry = redis.ListLeftPopAsync("votes").Result;
+                    if (!entry.IsNullOrEmpty)
                     {
+                        var json = entry.ToString();
                         var vote = JsonConvert.DeserializeAnonymousType(json, definition);
+                        if (vote == null)
+                        {
+                            Console.Error.WriteLine($"Skipping invalid vote payload: {json}");
+                            continue;
+                        }
+
                         Console.WriteLine($"Processing vote for '{vote.vote}' by '{vote.voter_id}'");
                         // Reconnect DB if down
                         if (!pgsql.State.Equals(System.Data.ConnectionState.Open))

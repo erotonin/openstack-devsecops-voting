@@ -36,8 +36,43 @@ function Get-TerraformOutput {
     }
 }
 
+function Ensure-Branch {
+    param(
+        [string]$Branch,
+        [string]$SourceBranch = "main"
+    )
+
+    $previousPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        & $Gh api "/repos/$Repo/branches/$Branch" 2>$null | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            return
+        }
+    } finally {
+        $ErrorActionPreference = $previousPreference
+    }
+
+    Write-Step "Creating $Branch branch from $SourceBranch"
+    $sourceSha = (& $Gh api "/repos/$Repo/git/ref/heads/$SourceBranch" --jq ".object.sha").Trim()
+    if (-not $sourceSha) {
+        throw "Could not resolve source branch '$SourceBranch' for $Repo."
+    }
+
+    & $Gh api `
+        --method POST `
+        -H "Accept: application/vnd.github+json" `
+        -H "X-GitHub-Api-Version: 2022-11-28" `
+        "/repos/$Repo/git/refs" `
+        -f ref="refs/heads/$Branch" `
+        -f sha="$sourceSha" | Out-Host
+}
+
 Write-Step "Checking GitHub CLI authentication"
 & $Gh auth status | Out-Host
+
+Ensure-Branch -Branch "dev"
+Ensure-Branch -Branch "staging"
 
 Write-Step "Reading Terraform outputs"
 $awsRoleArn = Get-TerraformOutput -Path $AwsEnv -Name "github_actions_role_arn"
@@ -79,32 +114,42 @@ Write-Step "Configuring GitHub Actions workflow permissions"
     -F can_approve_pull_request_reviews=true | Out-Host
 
 if ($ConfigureBranchProtection) {
-    Write-Step "Configuring main branch protection"
-    $payload = @{
-        required_status_checks        = @{
-            strict   = $true
-            contexts = @("PR security gates")
-        }
-        enforce_admins                = $true
-        required_pull_request_reviews = @{
-            required_approving_review_count = 1
-            dismiss_stale_reviews           = $true
-        }
-        restrictions                  = $null
-    } | ConvertTo-Json -Depth 6
+    function Set-BranchProtection {
+        param(
+            [string]$Branch,
+            [string[]]$RequiredChecks
+        )
 
-    $payloadFile = New-TemporaryFile
-    try {
-        [System.IO.File]::WriteAllText($payloadFile.FullName, $payload, [System.Text.UTF8Encoding]::new($false))
-        & $Gh api `
-            --method PUT `
-            -H "Accept: application/vnd.github+json" `
-            -H "X-GitHub-Api-Version: 2022-11-28" `
-            "/repos/$Repo/branches/main/protection" `
-            --input $payloadFile.FullName | Out-Host
-    } finally {
-        Remove-Item -LiteralPath $payloadFile -ErrorAction SilentlyContinue
+        Write-Step "Configuring $Branch branch protection"
+        $payload = @{
+            required_status_checks        = @{
+                strict   = $true
+                contexts = $RequiredChecks
+            }
+            enforce_admins                = $true
+            required_pull_request_reviews = @{
+                required_approving_review_count = 1
+                dismiss_stale_reviews           = $true
+            }
+            restrictions                  = $null
+        } | ConvertTo-Json -Depth 6
+
+        $payloadFile = New-TemporaryFile
+        try {
+            [System.IO.File]::WriteAllText($payloadFile.FullName, $payload, [System.Text.UTF8Encoding]::new($false))
+            & $Gh api `
+                --method PUT `
+                -H "Accept: application/vnd.github+json" `
+                -H "X-GitHub-Api-Version: 2022-11-28" `
+                "/repos/$Repo/branches/$Branch/protection" `
+                --input $payloadFile.FullName | Out-Host
+        } finally {
+            Remove-Item -LiteralPath $payloadFile -ErrorAction SilentlyContinue
+        }
     }
+
+    Set-BranchProtection -Branch "dev" -RequiredChecks @("Feature PR light security gates")
+    Set-BranchProtection -Branch "main" -RequiredChecks @("Release PR full security gates")
 }
 
 Write-Step "Repository configuration completed"

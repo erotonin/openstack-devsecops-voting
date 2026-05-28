@@ -1,7 +1,7 @@
 #!/usr/bin/env pwsh
 param(
     [string]$Context = "",
-    [string]$Namespace = "voting",
+    [string]$Namespace = "voting-staging",
     [int]$VotePort = 18080,
     [int]$ResultPort = 18081
 )

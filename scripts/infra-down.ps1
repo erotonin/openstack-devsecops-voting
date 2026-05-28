@@ -54,7 +54,7 @@ function Remove-KubernetesResources {
     }
 
     Write-Step "Pre-destroy Kubernetes cleanup"
-    $namespaces = @("voting", "argocd", "monitoring", "logging", "falco", "external-secrets", "gatekeeper-system")
+    $namespaces = @("voting-staging", "voting-production", "voting", "argocd", "monitoring", "logging", "falco", "external-secrets", "gatekeeper-system", "cosign-system", "kyverno")
 
     function Invoke-KubectlBestEffort {
         param(

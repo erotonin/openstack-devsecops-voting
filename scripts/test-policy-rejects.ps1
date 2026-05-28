@@ -1,5 +1,5 @@
 param(
-    [string]$Namespace = "voting",
+    [string]$Namespace = "voting-staging",
     [string]$Context = ""
 )
 

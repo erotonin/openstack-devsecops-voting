@@ -11,6 +11,19 @@ resource "kubernetes_namespace" "voting" {
   depends_on = [module.aks]
 }
 
+resource "kubernetes_namespace" "voting_production" {
+  metadata {
+    name = "voting-production"
+    labels = {
+      "pod-security.kubernetes.io/enforce" = "restricted"
+      "pod-security.kubernetes.io/audit"   = "restricted"
+      "pod-security.kubernetes.io/warn"    = "restricted"
+    }
+  }
+
+  depends_on = [module.aks]
+}
+
 locals {
   argocd_rbac_policy = join("\n", concat(
     [for group in var.argocd_sso_admin_groups : "g, ${group}, role:admin"],
@@ -159,7 +172,7 @@ resource "kubernetes_manifest" "argocd_project_voting" {
       ]
       destinations = [
         {
-          namespace = "voting"
+          namespace = "voting-production"
           server    = "https://kubernetes.default.svc"
         }
       ]
@@ -180,7 +193,7 @@ resource "kubernetes_manifest" "argocd_app_azure" {
     apiVersion = "argoproj.io/v1alpha1"
     kind       = "Application"
     metadata = {
-      name      = "voting-azure"
+      name      = "voting-azure-production"
       namespace = "argocd"
       finalizers = [
         "resources-finalizer.argocd.argoproj.io"
@@ -198,7 +211,7 @@ resource "kubernetes_manifest" "argocd_app_azure" {
       }
       destination = {
         server    = "https://kubernetes.default.svc"
-        namespace = "voting"
+        namespace = "voting-production"
       }
       ignoreDifferences = [
         {
@@ -223,7 +236,7 @@ resource "kubernetes_manifest" "argocd_app_azure" {
     helm_release.argocd,
     kubernetes_manifest.argocd_project_voting,
     kubernetes_manifest.azure_secret_store,
-    kubernetes_namespace.voting,
+    kubernetes_namespace.voting_production,
   ]
 }
 

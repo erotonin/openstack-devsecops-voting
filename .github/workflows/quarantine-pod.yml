@@ -9,7 +9,7 @@ on:
       namespace:
         description: "Namespace of the pod"
         required: true
-        default: "voting"
+        default: "voting-staging"
 
 permissions:
   id-token: write
@@ -40,14 +40,18 @@ jobs:
           aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }}
 
       - name: Apply Quarantine NetworkPolicy
+        env:
+          TARGET_NAMESPACE: ${{ github.event.inputs.namespace }}
         run: |
-          # Ensure the NetworkPolicy that blocks egress/ingress exists in the cluster
-          kubectl apply -f response/k8s/quarantine-networkpolicy.yaml
+          kubectl apply -n "$TARGET_NAMESPACE" -f response/k8s/quarantine-networkpolicy.yaml
 
       - name: Label Pod for Quarantine
+        env:
+          TARGET_POD: ${{ github.event.inputs.pod_name }}
+          TARGET_NAMESPACE: ${{ github.event.inputs.namespace }}
         run: |
-          echo "Isolating pod ${{ github.event.inputs.pod_name }} in namespace ${{ github.event.inputs.namespace }}..."
-          kubectl label pod ${{ github.event.inputs.pod_name }} -n ${{ github.event.inputs.namespace }} security.devsecops/quarantine=true --overwrite
+          echo "Isolating pod ${TARGET_POD} in namespace ${TARGET_NAMESPACE}..."
+          kubectl label pod "$TARGET_POD" -n "$TARGET_NAMESPACE" security.devsecops/quarantine=true --overwrite
 
           echo "Pod isolated successfully."
-          echo "Run 'kubectl describe pod ${{ github.event.inputs.pod_name }} -n ${{ github.event.inputs.namespace }}' to verify."
+          echo "Run 'kubectl describe pod ${TARGET_POD} -n ${TARGET_NAMESPACE}' to verify."

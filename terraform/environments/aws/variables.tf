@@ -86,6 +86,12 @@ variable "gitops_target_revision" {
   description = "Git revision tracked by ArgoCD"
 }
 
+variable "gitops_staging_revision" {
+  type        = string
+  default     = "staging"
+  description = "Git revision tracked by the staging ArgoCD application"
+}
+
 variable "argocd_domain" {
   type        = string
   default     = "argocd.local"

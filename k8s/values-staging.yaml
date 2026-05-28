@@ -1,4 +1,4 @@
-replicaCount: 3
+replicaCount: 1
 
 service:
   type: LoadBalancer
@@ -7,8 +7,8 @@ ingress:
   enabled: false
   className: ""
   hosts:
-    vote: vote.example.com
-    result: result.example.com
+    vote: vote-staging.example.com
+    result: result-staging.example.com
 
 images:
   vote:
@@ -60,32 +60,31 @@ monitoring:
 
 autoscaling:
   enabled: true
-  minReplicas: 3
-  maxReplicas: 10
+  minReplicas: 1
+  maxReplicas: 5
   targetCPUUtilizationPercentage: 70
 
 resources:
   vote:
     requests:
-      cpu: 100m
-      memory: 128Mi
+      cpu: 50m
+      memory: 64Mi
     limits:
       cpu: 500m
       memory: 256Mi
   result:
     requests:
-      cpu: 100m
-      memory: 128Mi
+      cpu: 50m
+      memory: 64Mi
     limits:
       cpu: 500m
       memory: 256Mi
   worker:
     requests:
-      cpu: 100m
-      memory: 128Mi
+      cpu: 50m
+      memory: 64Mi
     limits:
       cpu: 500m
       memory: 256Mi
-
 kyverno:
-  enabled: true
+  enabled: false
