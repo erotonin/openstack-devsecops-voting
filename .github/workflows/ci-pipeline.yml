@@ -41,22 +41,22 @@ jobs:
     if: github.event_name == 'pull_request' && github.base_ref == 'dev'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           fetch-depth: 0
 
       - name: Gitleaks secret scan
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
       - name: Semgrep SAST
-        uses: semgrep/semgrep-action@v1
+        uses: semgrep/semgrep-action@713efdd345f3035192eaa63f56867b88e63e4e5d
         with:
           config: auto
 
       - name: Trivy filesystem dependency scan
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
           scan-type: fs
           scan-ref: .
@@ -80,22 +80,22 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           fetch-depth: 0
 
       - name: Gitleaks full secret scan
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
       - name: Semgrep SAST
-        uses: semgrep/semgrep-action@v1
+        uses: semgrep/semgrep-action@713efdd345f3035192eaa63f56867b88e63e4e5d
         with:
           config: auto
 
       - name: Checkov IaC and workflow scan
-        uses: bridgecrewio/checkov-action@v12
+        uses: bridgecrewio/checkov-action@4048c972aae68d0b983a48bb3479aab2d877b898
         with:
           directory: .
           framework: terraform,kubernetes,dockerfile,github_actions
@@ -105,7 +105,7 @@ jobs:
           soft_fail: false
 
       - name: tfsec Terraform scan
-        uses: aquasecurity/tfsec-action@v1.0.3
+        uses: aquasecurity/tfsec-action@b466648d6e39e7c75324f25d83891162a721f2d6
         with:
           working_directory: terraform
           version: v1.28.14
@@ -113,7 +113,7 @@ jobs:
           soft_fail: false
 
       - name: Trivy filesystem dependency scan
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
           scan-type: fs
           scan-ref: .
@@ -130,7 +130,9 @@ jobs:
 
       - name: Install Conftest
         run: |
-          wget -q https://github.com/open-policy-agent/conftest/releases/download/v0.56.0/conftest_0.56.0_Linux_x86_64.tar.gz
+          gh release download v0.56.0 \
+            --repo open-policy-agent/conftest \
+            --pattern conftest_0.56.0_Linux_x86_64.tar.gz
           tar xzf conftest_0.56.0_Linux_x86_64.tar.gz
           sudo mv conftest /usr/local/bin/conftest
 
@@ -146,22 +148,22 @@ jobs:
     if: github.event_name == 'pull_request' && github.base_ref == 'main'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           fetch-depth: 0
 
       - name: Gitleaks full secret scan
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
       - name: Semgrep SAST
-        uses: semgrep/semgrep-action@v1
+        uses: semgrep/semgrep-action@713efdd345f3035192eaa63f56867b88e63e4e5d
         with:
           config: auto
 
       - name: Checkov IaC and workflow scan
-        uses: bridgecrewio/checkov-action@v12
+        uses: bridgecrewio/checkov-action@4048c972aae68d0b983a48bb3479aab2d877b898
         with:
           directory: .
           framework: terraform,kubernetes,dockerfile,github_actions
@@ -171,7 +173,7 @@ jobs:
           soft_fail: false
 
       - name: tfsec Terraform scan
-        uses: aquasecurity/tfsec-action@v1.0.3
+        uses: aquasecurity/tfsec-action@b466648d6e39e7c75324f25d83891162a721f2d6
         with:
           working_directory: terraform
           version: v1.28.14
@@ -179,7 +181,7 @@ jobs:
           soft_fail: false
 
       - name: Trivy filesystem dependency scan
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
           scan-type: fs
           scan-ref: .
@@ -196,7 +198,9 @@ jobs:
 
       - name: Install Conftest
         run: |
-          wget -q https://github.com/open-policy-agent/conftest/releases/download/v0.56.0/conftest_0.56.0_Linux_x86_64.tar.gz
+          gh release download v0.56.0 \
+            --repo open-policy-agent/conftest \
+            --pattern conftest_0.56.0_Linux_x86_64.tar.gz
           tar xzf conftest_0.56.0_Linux_x86_64.tar.gz
           sudo mv conftest /usr/local/bin/conftest
 
@@ -219,7 +223,7 @@ jobs:
       pull-requests: read
     steps:
       - name: Create Issue
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
         with:
           script: |
             const issueTitle = `Security gate failed for PR #${context.issue.number}`;
@@ -248,7 +252,7 @@ jobs:
       build_required: ${{ steps.classify.outputs.build_required }}
     steps:
       - name: Checkout release source
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           fetch-depth: 2
 
@@ -283,21 +287,21 @@ jobs:
           - worker
     steps:
       - name: Checkout release source
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
       - name: Configure AWS credentials with OIDC
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: ecr
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@fa648b43de3d4d023bcb3f89ed6940096949c419
 
       - name: Azure login with OIDC
         if: env.ACR_LOGIN_SERVER != ''
-        uses: azure/login@v2
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -318,7 +322,13 @@ jobs:
           set -euo pipefail
           for attempt in 1 2 3; do
             echo "Installing Syft (attempt ${attempt}/3)"
-            if curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sudo sh -s -- -b /usr/local/bin v1.42.3; then
+            rm -f /tmp/syft /tmp/syft_1.42.3_linux_amd64.tar.gz
+            if gh release download v1.42.3 \
+                --repo anchore/syft \
+                --pattern syft_1.42.3_linux_amd64.tar.gz \
+                --dir /tmp; then
+              tar xzf /tmp/syft_1.42.3_linux_amd64.tar.gz -C /tmp syft
+              sudo mv /tmp/syft /usr/local/bin/syft
               syft version
               exit 0
             fi
@@ -332,7 +342,7 @@ jobs:
           syft "${{ matrix.service }}:${IMAGE_TAG}" -o spdx-json=sbom-${{ matrix.service }}.spdx.json
 
       - name: Upload SBOM
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: sbom-${{ matrix.service }}
           path: sbom-${{ matrix.service }}.spdx.json
@@ -349,7 +359,7 @@ jobs:
           docker tag "${{ matrix.service }}:${IMAGE_TAG}" "${ACR_LOGIN_SERVER}/voting-app-${{ matrix.service }}:${IMAGE_TAG}"
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac
 
       - name: Push ECR image and resolve digest
         id: push_ecr
@@ -391,7 +401,7 @@ jobs:
             "https://github.com/${{ github.repository }}/.github/workflows/ci-pipeline.yml@refs/heads/main"
 
       - name: Trivy image scan after signature verification
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
           image-ref: ${{ steps.push_ecr.outputs.image_digest }}
           severity: CRITICAL,HIGH
@@ -405,23 +415,23 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Checkout release source
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           fetch-depth: 0
 
       - name: Configure AWS credentials with OIDC
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: ecr
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@fa648b43de3d4d023bcb3f89ed6940096949c419
 
       - name: Azure login with OIDC
         if: env.ACR_LOGIN_SERVER != ''
-        uses: azure/login@v2
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -484,7 +494,7 @@ jobs:
 
       - name: OWASP ZAP baseline
         if: vars.STAGING_URL != ''
-        uses: zaproxy/action-baseline@v0.15.0
+        uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25
         with:
           target: ${{ vars.STAGING_URL }}
           fail_action: true
@@ -501,7 +511,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           fetch-depth: 2
 
@@ -527,7 +537,7 @@ jobs:
 
       - name: Configure AWS credentials with OIDC
         if: steps.promote.outputs.should_promote == 'true'
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -535,11 +545,11 @@ jobs:
       - name: Login to Amazon ECR
         if: steps.promote.outputs.should_promote == 'true'
         id: ecr
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@fa648b43de3d4d023bcb3f89ed6940096949c419
 
       - name: Azure login with OIDC
         if: steps.promote.outputs.should_promote == 'true' && env.ACR_LOGIN_SERVER != ''
-        uses: azure/login@v2
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -557,7 +567,7 @@ jobs:
 
       - name: Create promotion pull request
         if: steps.promote.outputs.should_promote == 'true'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c
         with:
           token: ${{ secrets.ACTIONS_PR_TOKEN || github.token }}
           branch: promote/images-${{ github.sha }}
