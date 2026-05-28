@@ -3,9 +3,8 @@ var express = require('express'),
     path = require('path'),
     { Pool } = require('pg'),
     client = require('prom-client'),
+    csrf = require('csurf'),
     cookieParser = require('cookie-parser'),
-    // nosemgrep: javascript.express.security.audit.express-check-csurf-middleware-usage.express-check-csurf-middleware-usage
-    // Result service exposes read-only GET endpoints; the voting POST path is protected in vote/app.py.
     app = express(),
     server = require('http').Server(app),
     io = require('socket.io')(server);
@@ -82,6 +81,14 @@ function collectVotesFromResult(result) {
 }
 
 app.use(cookieParser());
+app.use(express.urlencoded({ extended: false, limit: process.env.URLENCODED_LIMIT || '10kb' }));
+app.use(csrf({
+  cookie: {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.COOKIE_SECURE !== 'false'
+  }
+}));
 app.use(function (_req, res, next) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
@@ -108,8 +115,15 @@ app.use(function (req, res, next) {
   });
   next();
 });
-app.use(express.urlencoded({ extended: false, limit: process.env.URLENCODED_LIMIT || '10kb' }));
 app.use(express.static(__dirname + '/views'));
+
+app.use(function (err, _req, res, next) {
+  if (err.code !== 'EBADCSRFTOKEN') {
+    return next(err);
+  }
+
+  res.status(403).json({ error: 'invalid csrf token' });
+});
 
 app.get('/healthz', function (req, res) {
   res.status(200).json({ status: 'ok', service: 'result' });
