@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ "$#" -lt 2 ]; then
+if [[ "$#" -lt 2 ]]; then
   echo "Usage: $0 <image-digest-ref> <certificate-identity-regexp> [certificate-oidc-issuer]" >&2
   exit 2
 fi
@@ -45,7 +45,7 @@ signature_algorithm="$(awk -F': ' '/Signature Algorithm:/ {print $2; exit}' "$ce
 public_key_algorithm="$(awk -F': ' '/Public Key Algorithm:/ {print $2; exit}' "$cert_text" | tr '[:upper:]' '[:lower:]')"
 public_key_bits="$(awk -F'[()]' '/Public-Key:/ {gsub(/[^0-9]/, "", $2); print $2; exit}' "$cert_text")"
 
-if [ -z "$signature_algorithm" ] || [ -z "$public_key_algorithm" ]; then
+if [[ -z "$signature_algorithm" || -z "$public_key_algorithm" ]]; then
   echo "Could not read certificate signature/public-key algorithms." >&2
   exit 1
 fi
@@ -65,13 +65,13 @@ esac
 
 case "$public_key_algorithm" in
   *id-ecpublickey*|*ed25519*)
-    if [ -n "$public_key_bits" ] && [ "$public_key_bits" -lt 256 ]; then
+    if [[ -n "$public_key_bits" && "$public_key_bits" -lt 256 ]]; then
       echo "Rejected weak EC/EdDSA public key size: ${public_key_bits} bits" >&2
       exit 1
     fi
     ;;
   *rsaencryption*)
-    if [ -z "$public_key_bits" ] || [ "$public_key_bits" -lt 3072 ]; then
+    if [[ -z "$public_key_bits" || "$public_key_bits" -lt 3072 ]]; then
       echo "Rejected weak RSA public key size: ${public_key_bits:-unknown} bits" >&2
       exit 1
     fi

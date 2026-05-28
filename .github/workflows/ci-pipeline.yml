@@ -69,7 +69,7 @@ jobs:
         run: |
           set -euo pipefail
           python -m py_compile vote/app.py
-          npm --prefix result ci
+          npm --prefix result ci --ignore-scripts
           npm --prefix result audit --audit-level=high
           dotnet restore worker/Worker.csproj
           dotnet build worker/Worker.csproj --configuration Release --no-restore
@@ -260,7 +260,7 @@ jobs:
           changed="$(git diff-tree --no-commit-id --name-only -r HEAD || true)"
           non_gitops="$(printf '%s\n' "$changed" | grep -Ev '^(k8s/values-staging.yaml|k8s/values-prod.yaml|k8s/values-azure.yaml)$' || true)"
 
-          if [ -z "$non_gitops" ]; then
+          if [[ -z "$non_gitops" ]]; then
             echo "build_required=false" >> "$GITHUB_OUTPUT"
             echo "Main push only changed GitOps values; production ArgoCD will sync without rebuilding."
             exit 0
@@ -472,7 +472,7 @@ jobs:
           health_url="${{ vars.STAGING_URL }}/healthz"
           for attempt in $(seq 1 48); do
             status="$(curl -ks -o /dev/null -w '%{http_code}' "$health_url" || true)"
-            if [ "$status" = "200" ]; then
+            if [[ "$status" == "200" ]]; then
               echo "Staging endpoint is healthy: $health_url"
               exit 0
             fi
@@ -518,7 +518,7 @@ jobs:
           fi
 
           non_gitops="$(printf '%s\n' "$changed" | grep -Ev '^(k8s/values-staging.yaml|k8s/values-prod.yaml|k8s/values-azure.yaml)$' || true)"
-          if [ -z "$non_gitops" ]; then
+          if [[ -z "$non_gitops" ]]; then
             echo "should_promote=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
