@@ -26,11 +26,27 @@ cosign verify \
 
 jq -e 'length > 0' "$verify_json" >/dev/null
 
-jq -r '[.[] | .cert // .Cert // .certificate // .Certificate // empty][0] // empty' "$verify_json" > "$cert_pem"
+jq -r '
+  def entries: if type == "array" then .[] elif type == "object" then . else empty end;
+  [entries | .cert? // .Cert? // .certificate? // .Certificate? // empty][0] // empty
+' "$verify_json" > "$cert_pem"
 
 if ! grep -q "BEGIN CERTIFICATE" "$cert_pem"; then
   cosign download signature "$image_ref" > "$signatures_json"
-  jq -r '[.[] | .cert // .Cert // .certificate // .Certificate // empty][0] // empty' "$signatures_json" > "$cert_pem"
+  jq -r '
+    def entries: if type == "array" then .[] elif type == "object" then . else empty end;
+    [entries | .cert? // .Cert? // .certificate? // .Certificate? // empty][0] // empty
+  ' "$signatures_json" > "$cert_pem"
+fi
+
+if ! grep -q "BEGIN CERTIFICATE" "$cert_pem"; then
+  jq -r '
+    def entries: if type == "array" then .[] elif type == "object" then . else empty end;
+    [entries | .optional.Bundle.Payload.body? // empty][0] // empty
+  ' "$verify_json" | base64 -d > "$tmpdir/rekor-body.json" 2>/dev/null || true
+
+  jq -r '.spec.signature.publicKey.content // empty' "$tmpdir/rekor-body.json" 2>/dev/null \
+    | base64 -d > "$cert_pem" 2>/dev/null || true
 fi
 
 if ! grep -q "BEGIN CERTIFICATE" "$cert_pem"; then
