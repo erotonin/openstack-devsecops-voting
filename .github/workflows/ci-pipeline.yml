@@ -129,7 +129,10 @@ jobs:
           helm template voting-app k8s -f k8s/values-azure.yaml >/tmp/voting-azure.yaml
 
       - name: Install Conftest
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          rm -f conftest conftest_0.56.0_Linux_x86_64.tar.gz
           gh release download v0.56.0 \
             --repo open-policy-agent/conftest \
             --pattern conftest_0.56.0_Linux_x86_64.tar.gz
@@ -197,7 +200,10 @@ jobs:
           helm template voting-app k8s -f k8s/values-azure.yaml >/tmp/voting-azure.yaml
 
       - name: Install Conftest
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          rm -f conftest conftest_0.56.0_Linux_x86_64.tar.gz
           gh release download v0.56.0 \
             --repo open-policy-agent/conftest \
             --pattern conftest_0.56.0_Linux_x86_64.tar.gz
@@ -318,6 +324,8 @@ jobs:
             "./${{ matrix.service }}"
 
       - name: Install Syft
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           for attempt in 1 2 3; do
