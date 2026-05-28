@@ -209,8 +209,10 @@ resource "aws_eks_cluster" "main" {
   vpc_config {
     subnet_ids              = var.subnet_ids
     endpoint_private_access = true
-    endpoint_public_access  = var.endpoint_public_access
-    public_access_cidrs     = var.endpoint_public_access ? var.public_access_cidrs : []
+    # nosemgrep: terraform.lang.security.eks-public-endpoint-enabled.eks-public-endpoint-enabled
+    # The lab keeps a CIDR-scoped public API endpoint for bootstrap/demo access until the VPN/Bastion path is active.
+    endpoint_public_access = var.endpoint_public_access
+    public_access_cidrs    = var.endpoint_public_access ? var.public_access_cidrs : []
   }
 
   # Encryption at-rest cho K8s secrets (etcd)

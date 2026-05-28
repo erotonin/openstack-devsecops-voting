@@ -2,6 +2,12 @@ services:
   db:
     image: postgres:15-alpine
     container_name: db
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run/postgresql
+    security_opt:
+      - no-new-privileges:true
     environment:
       POSTGRES_USER: "postgres"
       POSTGRES_PASSWORD: "postgres"
@@ -12,11 +18,23 @@ services:
   redis:
     image: redis:7-alpine
     container_name: redis
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - redis-data:/data
+    security_opt:
+      - no-new-privileges:true
     networks:
       - voting-network
   vote:
     build: ./vote
     container_name: vote
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
     ports:
       - "5000:8080"
     environment:
@@ -30,6 +48,11 @@ services:
   result:
     build: ./result
     container_name: result
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
     ports:
       - "5001:4000"
     environment:
@@ -45,6 +68,11 @@ services:
   worker:
     build: ./worker
     container_name: worker
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
     environment:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
@@ -63,3 +91,4 @@ networks:
     driver: bridge
 volumes:
   db-data:
+  redis-data:

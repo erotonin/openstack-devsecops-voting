@@ -1,0 +1,3 @@
+result/views/angular.min.js
+result/views/socket.io.js
+result/docker-compose.test.yml

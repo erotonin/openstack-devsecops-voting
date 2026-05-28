@@ -23,10 +23,13 @@ jobs:
     steps:
       - name: Resolve target URL
         id: target
+        env:
+          INPUT_TARGET_URL: ${{ inputs.target_url }}
+          DEFAULT_STAGING_URL: ${{ vars.STAGING_URL }}
         run: |
-          target="${{ inputs.target_url }}"
+          target="$INPUT_TARGET_URL"
           if [ -z "$target" ]; then
-            target="${{ vars.STAGING_URL }}"
+            target="$DEFAULT_STAGING_URL"
           fi
           if [ -z "$target" ]; then
             echo "STAGING_URL is not set and no target_url input was provided." >&2
