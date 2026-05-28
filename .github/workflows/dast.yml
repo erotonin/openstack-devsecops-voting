@@ -7,9 +7,6 @@ on:
         description: "HTTP/HTTPS URL to scan. Defaults to repository variable STAGING_URL."
         required: false
         type: string
-  pull_request:
-    branches:
-      - main
 
 permissions:
   contents: read
@@ -19,7 +16,6 @@ jobs:
   zap-baseline:
     name: ZAP baseline scan
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || vars.STAGING_URL != ''
     steps:
       - name: Resolve target URL
         id: target
