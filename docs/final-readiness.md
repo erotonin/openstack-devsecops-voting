@@ -24,12 +24,16 @@ This file summarizes the final project state for the capstone handoff.
 
 ## Verified Evidence
 
-- AWS ArgoCD application `voting-aws` is `Synced Healthy`.
+- AWS ArgoCD application `voting-staging` is `Synced Healthy`.
+- AWS ArgoCD application `voting-production` is `Synced Healthy`.
 - Azure ArgoCD application `voting-azure` is `Synced Healthy`.
 - ArgoCD SSO OIDC config is present on both clusters.
 - ArgoCD RBAC maps Entra group object IDs to admin and readonly roles.
 - PR security gate demo passed on pull request `#28`.
 - Production approval workflow_dispatch run passed.
+- Full main release pipeline `26556068376` passed build, SBOM, Cosign sign/verify, Trivy image scan, staging GitOps, smoke test, OWASP ZAP DAST, and promotion PR creation.
+- GitOps promotion run `26556732195` passed after promotion PR `#72` was merged.
+- AWS staging, AWS production, and Azure warm standby `/healthz` endpoints returned HTTP 200.
 - Redis CloudWatch log group is encrypted with KMS and retains logs for 365 days.
 - Live AWS EKS was observed at Kubernetes `1.30`; AKS was observed at `1.34.7`.
 

@@ -168,7 +168,7 @@ kubectl --context arn:aws:eks:us-east-1:800557027783:cluster/voting-app-cluster 
   -n argocd get application voting-staging voting-production
 
 kubectl --context devsecops-voting-aks `
-  -n argocd get application voting-azure-production
+  -n argocd get application voting-azure
 ```
 
 Expected result: AWS staging and production should be `Synced Healthy`; Azure production should be healthy after the warm-standby sync succeeds.
@@ -180,6 +180,7 @@ Use the verified demo runbook:
 ```text
 docs/teacher-aligned-demo-runbook.md
 docs/devsecops-phase-model.md
+docs/teacher-aligned-architecture.md
 ```
 
 Useful scripts:

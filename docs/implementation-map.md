@@ -35,7 +35,10 @@ This map links the project scope to the implementation files.
 | Azure standby ArgoCD | `terraform/environments/azure/helm.tf` |
 | AWS secret sync | External Secrets + AWS Secrets Manager in `terraform/environments/aws/helm.tf` |
 | Azure secret sync | External Secrets + Azure Key Vault in `terraform/environments/azure/helm.tf`, `secrets.tf` |
-| App Helm chart | `k8s/templates`, `k8s/values-prod.yaml`, `k8s/values-azure.yaml` |
+| AWS staging app | ArgoCD app `voting-staging`, namespace `voting-staging`, Git branch `staging`, `k8s/values-staging.yaml` |
+| AWS production app | ArgoCD app `voting-production`, namespace `voting-production`, Git branch `main`, `k8s/values-prod.yaml` |
+| Azure warm standby app | ArgoCD app `voting-azure`, namespace `voting`, Git branch `main`, `k8s/values-azure.yaml` |
+| App Helm chart | `k8s/templates`, `k8s/values-staging.yaml`, `k8s/values-prod.yaml`, `k8s/values-azure.yaml` |
 
 ## Policy And Runtime Security
 

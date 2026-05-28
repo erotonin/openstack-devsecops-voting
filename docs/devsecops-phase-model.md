@@ -40,7 +40,7 @@ flowchart LR
 | Staging deploy | Desired state staging độc lập production | Branch `staging`, ArgoCD app `voting-staging`, namespace `voting-staging` | ArgoCD OutOfSync/Degraded, không DAST |
 | Dynamic test | Ứng dụng thật đã chạy và reachable | Smoke test `/healthz`, OWASP ZAP baseline | Không mở promotion PR |
 | Production promotion | Thay đổi production desired state có review boundary | GitOps PR cập nhật `values-prod.yaml`, `values-azure.yaml` | Không merge production |
-| Production deploy | Production sync từ Git, không deploy tay | ArgoCD app `voting-production`, Azure `voting-azure-production` | ArgoCD history/events thể hiện lỗi |
+| Production deploy | Production sync từ Git, không deploy tay | ArgoCD app `voting-production`, Azure `voting-azure` | ArgoCD history/events thể hiện lỗi |
 | Operate | Functional + security telemetry | Prometheus/Grafana, Loki/Promtail, Falco, Gatekeeper/Kyverno/Sigstore events | GitHub incident issue, quarantine workflow, rollback/DR runbook |
 
 ## Vì Sao Không Vẽ Tool Thành Chuỗi Cứng

@@ -305,7 +305,7 @@ RTO: <number> minutes
 Nếu Azure public IP quota gây hạn chế, demo bằng port-forward:
 
 ```powershell
-kubectl --context devsecops-voting-aks -n voting-production port-forward svc/vote 8080:80
+kubectl --context devsecops-voting-aks -n voting port-forward svc/vote 8080:80
 ```
 
 Open:
