@@ -572,6 +572,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin main
           git checkout -B "$PROMOTION_BRANCH" "$GITHUB_SHA"
           git merge --no-edit -X ours origin/main
