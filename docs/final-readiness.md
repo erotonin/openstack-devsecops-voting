@@ -31,7 +31,7 @@ This file summarizes the final project state for the capstone handoff.
 - ArgoCD RBAC maps Entra group object IDs to admin and readonly roles.
 - PR security gate demo passed on pull request `#28`.
 - Production approval workflow_dispatch run passed.
-- Full main release pipeline `26556068376` passed build, SBOM, Cosign sign/verify, Trivy image scan, staging GitOps, smoke test, OWASP ZAP DAST, and promotion PR creation.
+- Historical full release pipeline `26556068376` passed build, SBOM, Cosign sign/verify, Trivy image scan, staging GitOps, smoke test, OWASP ZAP DAST, and promotion PR creation.
 - GitOps promotion run `26556732195` passed after promotion PR `#72` was merged.
 - AWS staging, AWS production, and Azure warm standby `/healthz` endpoints returned HTTP 200.
 - Redis CloudWatch log group is encrypted with KMS and retains logs for 365 days.

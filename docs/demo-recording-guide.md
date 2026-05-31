@@ -166,7 +166,7 @@ Open:
 Explain the workflow:
 
 - Pull request event runs `PR security gates`.
-- Push to `main` builds signed staging artifacts for `vote`, `result`, and `worker`.
+- Push to `dev` builds signed staging artifacts for `vote`, `result`, and `worker`.
 - Build job performs dependency/image scanning, SBOM, Cosign signing, and registry push.
 - DAST runs against the staging URL.
 - Production approval is a separate manual gate.

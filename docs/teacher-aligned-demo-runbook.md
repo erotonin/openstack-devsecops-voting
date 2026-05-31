@@ -131,7 +131,7 @@ Trivy image scan after signature verification
 
 ## 5. Demo Staging Deploy Và DAST
 
-Sau khi CI main pass và staging branch được cập nhật:
+Sau khi CI trên `dev` pass và staging branch được cập nhật:
 
 ```powershell
 $ctx = "arn:aws:eks:us-east-1:800557027783:cluster/voting-app-cluster"

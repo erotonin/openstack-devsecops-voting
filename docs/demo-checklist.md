@@ -68,7 +68,7 @@ Can demo GitHub Actions run:
 Noi voi thay:
 
 ```text
-Sau khi vao main, pipeline moi tao artifact. Image duoc build, sinh SBOM, ky so, verify chu ky va scan CVE. Artifact nao khong qua cac buoc nay thi khong duoc dua vao staging.
+Sau khi vao `dev`, pipeline tao artifact. Image duoc build, sinh SBOM, ky so, verify chu ky va scan CVE. Artifact nao khong qua cac buoc nay thi khong duoc dua vao staging.
 ```
 
 ## 5. Demo Staging Va DAST
