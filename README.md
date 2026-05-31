@@ -2,7 +2,7 @@
 
 This repository is a production-inspired DevSecOps capstone for a small voting application. It combines application code, Terraform infrastructure, Kubernetes GitOps deployment, CI/CD security gates, image signing, admission policy, observability, runtime response, and disaster recovery.
 
-The current implementation uses AWS as the active primary site and Azure as the warm standby site. AWS and Azure are connected by a route-based IPsec VPN with BGP. PostgreSQL data is replicated from AWS RDS to Azure PostgreSQL Flexible Server with native PostgreSQL logical replication.
+The current implementation uses AWS as the active primary site and Azure as the warm standby site. AWS and Azure are connected by a route-based IPsec VPN with BGP. The codebase supports PostgreSQL logical replication from AWS RDS to Azure PostgreSQL Flexible Server; in the cost-capped demo, the Azure database standby can be enabled for a DR drill or left as a restore-required placeholder.
 
 ## Current Architecture
 
@@ -31,13 +31,13 @@ AWS primary site
   Prometheus/Grafana, Loki/Promtail, Falco/Falcosidekick
 
 Azure warm standby site
-  VNet, AKS, ACR, Azure Key Vault, Azure PostgreSQL Flexible Server
+  VNet, AKS, ACR, Azure Key Vault, optional Azure PostgreSQL Flexible Server
   ArgoCD standby controller, External Secrets Operator
 
 Cross-cloud path
   AWS VPN Gateway <-> Azure Virtual Network Gateway
   BGP routes carry private traffic between the two networks
-  PostgreSQL logical replication sends WAL deltas from AWS to Azure
+  Optional PostgreSQL logical replication sends WAL deltas from AWS to Azure during a DB standby drill
 ```
 
 Route53 DNS failover support is implemented in `scripts/configure-route53-failover.ps1`, but it requires a real Route53 hosted zone/domain. The current AWS account has no hosted zone, so public DNS failover is ready as code but not live-configured.
@@ -59,7 +59,7 @@ On Azure, only the `vote` service is exposed with a public LoadBalancer by defau
 | Secrets | External Secrets Operator syncs AWS Secrets Manager and Azure Key Vault into Kubernetes. Secrets are not committed in Helm values. |
 | Runtime security | Falco detects suspicious runtime behavior and can open a GitHub incident workflow. Quarantine is a manual approval workflow. |
 | Observability | kube-prometheus-stack, Grafana SLI/SLO dashboard, Loki, Promtail, and PrometheusRule resources. |
-| DR | Azure warm standby, ArgoCD sync, PostgreSQL logical replication, and Route53 failover script when a hosted zone exists. |
+| DR | Azure warm standby, ArgoCD sync, optional PostgreSQL logical replication or restore-required DB placeholder, and Route53 failover script when a hosted zone exists. |
 
 ## Repository Structure
 
@@ -181,6 +181,10 @@ Use the verified demo runbook:
 docs/teacher-aligned-demo-runbook.md
 docs/devsecops-phase-model.md
 docs/teacher-aligned-architecture.md
+docs/architecture-conceptual.md
+docs/devsecops-pipeline-diagram.md
+docs/pipeline-frameworks.md
+docs/demo-checklist.md
 ```
 
 Useful scripts:
@@ -215,6 +219,6 @@ az network vnet-gateway list -o table
 
 - Azure ACR uses Basic SKU. Premium-only controls such as private endpoints, geo-replication, image quarantine, and Defender integration are documented as production hardening items.
 - Azure image verification with Kyverno is disabled by default because Kyverno cannot verify private ACR manifests without extra registry credentials. AWS EKS remains the enforced signed-image admission path through Sigstore policy-controller.
-- Azure warm standby uses an in-cluster Redis service to avoid extra managed Redis cost. PostgreSQL state is still replicated with native logical replication.
+- Azure warm standby uses an in-cluster Redis service to avoid extra managed Redis cost. PostgreSQL standby is optional in the cost-capped demo; when disabled, Azure runtime secrets intentionally point at a restore-required database host.
 - Route53 failover requires a real hosted zone. The script exists, but no hosted zone is currently present in the AWS account.
 - GitHub branch protection is configured, but repository owners/admins can still bypass unless admin bypass is explicitly disabled in GitHub rulesets.

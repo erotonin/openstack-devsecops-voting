@@ -470,7 +470,7 @@ Say:
 - "AWS is primary."
 - "Azure is warm standby."
 - "DR flow: scale/sync AKS, verify PostgreSQL logical replication, switch endpoint/DNS when a hosted zone exists, measure RTO/RPO."
-- "The current build uses native PostgreSQL logical replication from AWS RDS to Azure PostgreSQL. Backup/seed remains a fallback path for cost-capped rebuilds."
+- "The codebase supports native PostgreSQL logical replication from AWS RDS to Azure PostgreSQL. In the cost-capped live demo, Azure DB can stay as a restore-required placeholder unless the DR database drill is enabled."
 
 ## Part 15 - EKS upgrade readiness
 

@@ -195,7 +195,7 @@ ArgoCD la deployment controller, nen audit deploy gom Git commit, PR, ArgoCD rev
 ```mermaid
 flowchart LR
   AWSApp["AWS production app"] --> RDS["AWS RDS PostgreSQL"]
-  RDS -->|"logical replication"| AzurePG["Azure PostgreSQL"]
+  RDS -->|"optional logical replication / restore drill"| AzurePG["Azure PostgreSQL"]
   AWSNet["AWS VPC"] <-->|"IPsec VPN + BGP"| AzureNet["Azure VNet"]
   MainGit["main GitOps state"] --> AWSArgo["AWS ArgoCD"]
   MainGit --> AzureArgo["Azure ArgoCD"]
@@ -207,7 +207,7 @@ DR story:
 
 - AWS la active primary.
 - Azure AKS sync cung desired state production nhu standby.
-- Data path dung PostgreSQL logical replication tu AWS RDS sang Azure PostgreSQL.
+- Data path co san runbook PostgreSQL logical replication tu AWS RDS sang Azure PostgreSQL. Trong live demo cost-capped, Azure DB co the de placeholder `restore-required` va trinh bay nhu buoc DR restore/replication drill.
 - Route53 failover script da co, nhung can hosted zone/domain that de kich hoat public DNS failover.
 - Azure student subscription co cost/quota constraint: result service de `ClusterIP`, Redis dung in-cluster Redis, ACR dung Basic SKU.
 

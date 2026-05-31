@@ -26,16 +26,32 @@ $files = @(
 
 foreach ($file in $files) {
     $path = Join-Path $PolicyDir $file
+    $tempPath = Join-Path ([System.IO.Path]::GetTempPath()) "voting-$file"
+    (Get-Content -LiteralPath $path -Raw).Replace("namespace: voting", "namespace: $Namespace") |
+        Set-Content -LiteralPath $tempPath -NoNewline
+
     Write-Host ""
     Write-Host "Applying $file. This should be denied." -ForegroundColor Yellow
-    $kubectlArgs = @("apply", "-f", $path, "-n", $Namespace, "--dry-run=server")
+    $kubectlArgs = @("apply", "-f", $tempPath, "--dry-run=server")
     if ($Context) {
         $kubectlArgs += @("--context", $Context)
     }
-    & kubectl @kubectlArgs
-    if ($LASTEXITCODE -eq 0) {
+    $previousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    $output = (& kubectl @kubectlArgs 2>&1) -join "`n"
+    $kubectlExitCode = $LASTEXITCODE
+    $ErrorActionPreference = $previousErrorActionPreference
+    if ($kubectlExitCode -eq 0) {
+        Remove-Item -LiteralPath $tempPath -Force -ErrorAction SilentlyContinue
         throw "$file was accepted, but it should have been denied by admission policy."
     }
+
+    Remove-Item -LiteralPath $tempPath -Force -ErrorAction SilentlyContinue
+    if ($output -notmatch "denied|admission webhook|violat|Image signature verification failed") {
+        throw "$file failed before admission policy could evaluate it:`n$output"
+    }
+
+    Write-Host $output
     Write-Host "$file denied as expected." -ForegroundColor Green
 }
 

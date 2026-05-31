@@ -35,17 +35,21 @@ resource "azurerm_key_vault_secret" "app_runtime" {
   content_type    = "application/json"
   expiration_date = "2099-12-31T23:59:59Z"
   value = jsonencode({
-    REDIS_HOST     = var.azure_redis_host
-    REDIS_PORT     = "6379"
-    REDIS_PASSWORD = var.azure_redis_password
-    REDIS_SSL      = tostring(var.azure_redis_ssl)
-    DB_HOST        = local.azure_db_host_effective
-    DB_PORT        = "5432"
-    DB_USER        = local.azure_db_user_effective
-    DB_PASSWORD    = local.azure_db_password_effective
-    DB_NAME        = local.azure_db_database_effective
-    DB_SSL_MODE    = local.azure_db_ssl_mode_effective
-    DATABASE_URL   = "postgres://${local.azure_db_user_effective}:${urlencode(local.azure_db_password_effective)}@${local.azure_db_host_effective}:5432/${local.azure_db_database_effective}?sslmode=require"
+    REDIS_HOST                 = var.azure_redis_host
+    REDIS_PORT                 = "6379"
+    REDIS_PASSWORD             = var.azure_redis_password
+    REDIS_SSL                  = tostring(var.azure_redis_ssl)
+    DB_HOST                    = local.azure_db_host_effective
+    DB_PORT                    = "5432"
+    DB_USER                    = local.azure_db_user_effective
+    DB_PASSWORD                = local.azure_db_password_effective
+    DB_NAME                    = local.azure_db_database_effective
+    DB_SSL                     = "true"
+    DB_SSL_MODE                = local.azure_db_ssl_mode_effective
+    DB_SSL_REJECT_UNAUTHORIZED = "false"
+    DATABASE_URL               = "postgres://${local.azure_db_user_effective}:${urlencode(local.azure_db_password_effective)}@${local.azure_db_host_effective}:5432/${local.azure_db_database_effective}?sslmode=require"
+    COOKIE_SECURE              = "false"
+    COOKIE_SAMESITE            = "Lax"
   })
 
   depends_on = [azurerm_role_assignment.current_key_vault_admin]
