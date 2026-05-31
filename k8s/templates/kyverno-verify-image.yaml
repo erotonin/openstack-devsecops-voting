@@ -39,4 +39,9 @@ spec:
               issuer: "https://token.actions.githubusercontent.com"
               rekor:
                 url: https://rekor.sigstore.dev
+          - keyless:
+              subject: "https://github.com/erotonin/devsecops-voting/.github/workflows/ci-pipeline.yml@refs/heads/dev"
+              issuer: "https://token.actions.githubusercontent.com"
+              rekor:
+                url: https://rekor.sigstore.dev
 {{- end }}

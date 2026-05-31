@@ -10,7 +10,7 @@ File nay trinh bay implementation cu the cua kien truc DevSecOps. Neu `docs/arch
 | Branch feature | Git branch | Noi developer lam tung thay doi rieng |
 | Pull request | GitHub Pull Request | Review code va kich hoat security gate |
 | Integration branch | `dev` | Gom feature da pass gate de kiem tra tong hop |
-| Release branch | `main` | Nguon release va desired state production |
+| Release branch | `main` | Nguon production desired state sau khi staging pass |
 | Branch protection | GitHub branch protection | Bat required checks va approving review |
 
 Hien tai:
@@ -45,27 +45,11 @@ Sau khi merge vao `dev`, pipeline chay bo kiem tra rong hon.
 | Kubernetes manifest | Helm lint, Helm template | Dam bao chart render hop le |
 | Policy as code | Conftest/OPA | Chan manifest vi pham policy |
 
-Ket qua dung: `dev` tro thanh release candidate sach hon, co the tao PR sang `main`.
+Ket qua dung: `dev` tro thanh release candidate sach hon va du dieu kien build/deploy staging.
 
-## 4. Release PR Gate Vao `main`
+## 4. Release Artifact Build Tren `dev`
 
-Khi tao PR `dev -> main`, GitHub Actions chay `Release PR full security gates`.
-
-| Muc kiem tra | Tool / framework | Muc dich |
-| --- | --- | --- |
-| Secret | Gitleaks | Khong cho secret vao release branch |
-| SAST | Semgrep | Chan loi bao mat trong code |
-| IaC | Checkov, tfsec | Chan cau hinh cloud nguy hiem |
-| K8s/Helm | Helm lint/template | Dam bao manifest render duoc cho staging/prod/Azure |
-| Policy | Conftest | Dam bao manifest hop policy |
-
-Ket qua dung: PR vao `main` chi merge khi full gate pass va co review.
-
-Ghi chu: Trivy FS va `npm audit` la source-level SCA. Chung bat CVE trong dependency manifest/lockfile som o PR/integration/release gate. Trivy image scan o buoc artifact la lop khac, dung de quet image that sau khi build, bao gom base image va package da cai trong container.
-
-## 5. Build, SBOM, Signing Va Scan Image
-
-Khi code vao `main`, GitHub Actions build ba service:
+Khi code vao `dev`, GitHub Actions build ba service:
 
 - `vote`: Python/Flask.
 - `result`: Node.js/Express.
@@ -80,13 +64,15 @@ Pipeline build container image bang Docker va day len:
 | --- | --- | --- |
 | Build image | Docker | Tao image cho `vote`, `result`, `worker` |
 | Generate SBOM | Syft | Tao SBOM SPDX cho image |
-| Sign image | Cosign keyless | Ky image digest bang GitHub OIDC/Fulcio/Rekor |
+| Sign image | Cosign keyless | Ky image digest bang GitHub OIDC/Fulcio/Rekor tu branch `dev` |
 | Verify signature | Cosign + policy script | Xac minh identity, issuer, Rekor bundle/certificate |
 | Image CVE scan | Trivy image | Chan image co CVE nghiem trong |
 
 Ket qua dung: chi image da co SBOM, da ky, da verify va scan pass moi duoc dung cho staging.
 
-## 6. Staging Deployment Va DAST
+Ghi chu: Trivy FS va `npm audit` la source-level SCA. Chung bat CVE trong dependency manifest/lockfile som o PR/integration/release gate. Trivy image scan o buoc artifact la lop khac, dung de quet image that sau khi build, bao gom base image va package da cai trong container.
+
+## 5. Staging Deployment Va DAST
 
 | Thanh phan | Framework / tool | Gia tri hien tai |
 | --- | --- | --- |
@@ -104,22 +90,22 @@ Ket qua dung:
 - `/healthz` staging HTTP 200.
 - OWASP ZAP baseline pass.
 
-## 7. Production Promotion
+## 6. Release PR Gate Va Production Promotion
 
-Neu staging va DAST pass, pipeline tao promotion PR cap nhat:
+Neu staging va DAST pass, pipeline tao promotion PR tu tested `dev` commit vao `main`. PR nay gom source changes da test va cap nhat:
 
 - `k8s/values-prod.yaml`
 - `k8s/values-azure.yaml`
 
-Promotion PR thay doi image digest cua production/Azure sang digest da duoc build, sign, verify va test o staging.
+Promotion PR thay doi image digest cua production/Azure sang digest da duoc build, sign, verify va test o staging. GitHub Actions chay `Release PR full security gates` tren PR nay truoc khi merge vao `main`.
 
 | Thanh phan | Framework / tool | Vai tro |
 | --- | --- | --- |
-| Promotion PR | GitHub Pull Request | Review thay doi desired state production |
+| Promotion PR | GitHub Pull Request | Review source release va desired state production |
 | GitOps desired state | Helm values | Ghi image digest production/Azure |
 | Required gate | Release PR full security gates | Kiem tra promotion PR truoc merge |
 
-## 8. Production Va Azure Deployment
+## 7. Production Va Azure Deployment
 
 | Moi truong | Cloud | Cluster | ArgoCD app | Namespace | Helm values |
 | --- | --- | --- | --- | --- | --- |
@@ -133,7 +119,7 @@ Ket qua dung:
 - `voting-azure` `Synced Healthy`.
 - `/healthz` production va Azure HTTP 200.
 
-## 9. Runtime Security
+## 8. Runtime Security
 
 | Lop bao ve | Framework / tool | Muc dich |
 | --- | --- | --- |
@@ -146,7 +132,7 @@ Ket qua dung:
 | Logging | Loki, Promtail | Tap trung log |
 | Runtime detection | Falco | Phat hien hanh vi bat thuong trong cluster |
 
-## 10. Infrastructure Va Multi-Cloud
+## 9. Infrastructure Va Multi-Cloud
 
 | Thanh phan | Framework / tool | Vai tro |
 | --- | --- | --- |
@@ -160,7 +146,7 @@ Ket qua dung:
 | Network DR | AWS VPN Gateway, Azure VNet Gateway, BGP | Ket noi hai cloud |
 | Failover | Route53 failover script | Chuyen traffic khi primary loi |
 
-## 11. Evidence Gan Nhat
+## 10. Evidence Gan Nhat
 
 | Evidence | Trang thai |
 | --- | --- |

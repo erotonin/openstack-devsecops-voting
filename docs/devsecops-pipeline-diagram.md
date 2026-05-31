@@ -149,7 +149,7 @@ flowchart TB
 ## 3. Loi Thuyet Minh Ngan
 
 ```text
-Pipeline nay khong phai chi la build va deploy. No la chuoi kiem soat rui ro. Developer tao PR thi he thong quet loi som nhu secret, SAST, SCA/dependency va cau hinh nguy hiem. SCA o tang source giup bat CVE trong dependency manifest/lockfile som de developer sua ngay. Khi code vao dev, pipeline kiem tra lai vi nhieu feature ghep chung co the sinh loi moi. Truoc khi vao main co release gate de dam bao release candidate sach. Main moi build artifact that, tao SBOM, ky image va scan CVE tren image da build. Artifact da pass moi len staging. Staging phai smoke test va DAST pass thi moi mo promotion PR. Production khong deploy truc tiep tu CI, ma ArgoCD dong bo tu desired state trong Git. Sau deploy van co runtime policy, secret management, monitoring va DR.
+Pipeline nay khong phai chi la build va deploy. No la chuoi kiem soat rui ro. Developer tao PR thi he thong quet loi som nhu secret, SAST, SCA/dependency va cau hinh nguy hiem. SCA o tang source giup bat CVE trong dependency manifest/lockfile som de developer sua ngay. Khi code vao dev, pipeline kiem tra lai vi nhieu feature ghep chung co the sinh loi moi, sau do build artifact that, tao SBOM, ky image va scan CVE tren image da build. Artifact da pass moi len staging. Staging phai smoke test va DAST pass thi moi mo promotion PR vao main. PR nay chay release gate, gom source da test va production values pin dung image digest da test. Production khong deploy truc tiep tu CI, ma ArgoCD dong bo tu desired state trong Git. Sau deploy van co runtime policy, secret management, monitoring va DR.
 ```
 
 ## 4. Diem Can Nhan Manh Khi Giai Thich

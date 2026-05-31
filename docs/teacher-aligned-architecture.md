@@ -87,12 +87,12 @@ AWS chay primary, Azure la warm standby. Production khong deploy truc tiep tu CI
 | Code | Developer thay doi ung dung/IaC/Helm | Git branch, PR, pre-commit | Loi co ban bi bat som |
 | Feature gate | Fast feedback truoc khi vao `dev` | Gitleaks, Semgrep, Trivy FS, SonarCloud | PR feature khong dua secret/bug ro rang vao dev |
 | Integration gate | Kiem tra tong the sau khi merge vao `dev` | Gitleaks, Semgrep, Checkov, tfsec, Trivy FS, Helm lint/template, Conftest | `dev` thanh release candidate sach |
-| Release gate | Chan release sai truoc `main` | Full security gate tren PR `dev -> main` | Chi source/config da qua gate moi vao main |
-| Build | Tao artifact bat bien | Docker, GitHub Actions matrix | Co image cho vote/result/worker |
+| Build | Tao artifact bat bien sau khi merge vao `dev` | Docker, GitHub Actions matrix | Co image cho vote/result/worker |
 | Supply chain | Chung minh image dung nguon va khong bi thay the | Syft SBOM, Cosign keyless, Fulcio/Rekor, GitHub OIDC | Image digest co SBOM va chu ky |
 | Image security | Scan artifact sau khi build | Trivy image scan by digest | CVE HIGH/CRITICAL bi chan |
 | Staging deploy | Chay ban build that tren moi truong truoc production | GitOps branch `staging`, ArgoCD app `voting-staging` | Staging `Synced Healthy` |
 | Dynamic test | Kiem tra app dang song nhu attacker/user that | Smoke `/healthz`, OWASP ZAP baseline | DAST pass truoc promotion |
+| Release gate | Chan release sai truoc `main` | Full security gate tren promotion PR tu tested `dev` commit | Chi source/config da qua staging moi vao main |
 | Production promotion | Doi desired state production co review | GitOps promotion PR, Helm values digest | Production khong bi auto-push truc tiep |
 | Production deploy | Cluster tu sync theo Git | ArgoCD `voting-production`, Azure `voting-azure` | AWS/Azure `Synced Healthy` |
 | Operate | Giam sat, phat hien, phan ung | Prometheus, Grafana, Loki, Promtail, Falco, incident workflow | Co evidence runtime va response path |
@@ -107,11 +107,11 @@ flowchart LR
   Feature["feature/*"] --> PRDev["PR to dev\nFeature PR light gate"]
   PRDev --> Dev["dev\nintegration branch"]
   Dev --> DevGate["Dev integration security gates"]
-  DevGate --> PRMain["PR dev -> main\nRelease PR full gate"]
-  PRMain --> Main["main\nrelease branch"]
-  Main --> Build["Build/sign/scan/deploy staging"]
-  Build --> PromotePR["GitOps promotion PR\nvalues-prod + values-azure"]
-  PromotePR --> MainProd["main updated\nproduction desired state"]
+  DevGate --> Build["Build/sign/scan"]
+  Build --> Staging["Deploy staging\nSmoke + DAST"]
+  Staging --> PromotePR["Promotion PR to main\nsource + values-prod + values-azure"]
+  PromotePR --> PRMain["Release PR full gate"]
+  PRMain --> Main["main\nproduction desired state"]
 ```
 
 Branch protection hien tai:
@@ -126,8 +126,8 @@ Pipeline chinh nam o `.github/workflows/ci-pipeline.yml`.
 
 ```mermaid
 flowchart LR
-  Source["main push"] --> Classify["Classify changed files"]
-  Classify --> Build["Docker build\nvote/result/worker"]
+  Source["dev push"] --> DevGate["Dev integration gates"]
+  DevGate --> Build["Docker build\nvote/result/worker"]
   Build --> SBOM["Syft SBOM"]
   Build --> Push["Push ECR + ACR"]
   Push --> Sign["Cosign keyless sign digest"]
@@ -235,7 +235,7 @@ CI:
 
 Run IDs:
 
-- Full main release: `26556068376`
+- Historical full release: `26556068376`
 - GitOps promotion: `26556732195`
 
 ## 5. Cach Tra Loi Khi Thay Hoi "Kien Truc Nay Khac Gi CI/CD Thuong?"
