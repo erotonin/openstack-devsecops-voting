@@ -44,9 +44,12 @@ $RuntimeConfig = [ordered]@{
     DB_USER        = $DbUser
     DB_PASSWORD    = $DbPassword
     DB_NAME        = $DbName
+    DB_SSL         = "true"
     DB_SSL_MODE    = "Require"
+    DB_SSL_REJECT_UNAUTHORIZED = "false"
     DATABASE_URL   = "postgres://${DbUser}:${DbPassword}@${DbHost}:5432/${DbName}?sslmode=require"
-    COOKIE_SECURE  = "true"
+    COOKIE_SECURE  = "false"
+    COOKIE_SAMESITE = "Lax"
 }
 
 $SecretValue = $RuntimeConfig | ConvertTo-Json -Compress

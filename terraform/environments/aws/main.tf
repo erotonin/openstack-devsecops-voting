@@ -152,17 +152,21 @@ module "app_runtime_secret" {
   name              = "${var.name_prefix}/app-runtime"
   generate_password = false
   secret_data = {
-    REDIS_HOST     = module.elasticache.primary_endpoint_address
-    REDIS_PORT     = tostring(module.elasticache.port)
-    REDIS_PASSWORD = module.redis_secret.password
-    REDIS_SSL      = "true"
-    DB_HOST        = module.rds.address
-    DB_PORT        = tostring(module.rds.port)
-    DB_USER        = "postgres"
-    DB_PASSWORD    = module.db_secret.password
-    DB_NAME        = module.rds.db_name
-    DB_SSL_MODE    = "Require"
-    DATABASE_URL   = "postgres://postgres:${urlencode(module.db_secret.password)}@${module.rds.address}:${module.rds.port}/${module.rds.db_name}?sslmode=require"
+    REDIS_HOST                 = module.elasticache.primary_endpoint_address
+    REDIS_PORT                 = tostring(module.elasticache.port)
+    REDIS_PASSWORD             = module.redis_secret.password
+    REDIS_SSL                  = "true"
+    DB_HOST                    = module.rds.address
+    DB_PORT                    = tostring(module.rds.port)
+    DB_USER                    = "postgres"
+    DB_PASSWORD                = module.db_secret.password
+    DB_NAME                    = module.rds.db_name
+    DB_SSL                     = "true"
+    DB_SSL_MODE                = "Require"
+    DB_SSL_REJECT_UNAUTHORIZED = "false"
+    DATABASE_URL               = "postgres://postgres:${urlencode(module.db_secret.password)}@${module.rds.address}:${module.rds.port}/${module.rds.db_name}?sslmode=require"
+    COOKIE_SECURE              = "false"
+    COOKIE_SAMESITE            = "Lax"
   }
   tags = local.common_tags
 }

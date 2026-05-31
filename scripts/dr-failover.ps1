@@ -1,7 +1,7 @@
 param(
     [string]$AzureEnv = "terraform/environments/azure",
     [int]$UserNodeCount = 1,
-    [string]$Namespace = "voting-production",
+    [string]$Namespace = "voting",
     [switch]$SkipScale,
     [switch]$OpenPortForward
 )
@@ -67,7 +67,7 @@ kubectl -n argocd rollout status deploy/argocd-server --timeout=5m | Out-Host
 kubectl -n argocd rollout status statefulset/argocd-application-controller --timeout=5m | Out-Host
 
 Write-Step "Refreshing Azure standby application"
-kubectl -n argocd annotate application voting-azure-production argocd.argoproj.io/refresh=hard --overwrite | Out-Host
+kubectl -n argocd annotate application voting-azure argocd.argoproj.io/refresh=hard --overwrite | Out-Host
 
 Write-Step "Waiting for voting workloads"
 kubectl -n $Namespace rollout status deploy/vote --timeout=10m | Out-Host
@@ -84,7 +84,7 @@ Write-Host "RTO:     $Rto minutes"
 
 Write-Step "Useful verification commands"
 Write-Host "kubectl -n $Namespace get pods,svc"
-Write-Host "kubectl -n argocd get application voting-azure-production"
+Write-Host "kubectl -n argocd get application voting-azure"
 
 if ($OpenPortForward) {
     Write-Step "Opening local port-forward to Azure vote service"

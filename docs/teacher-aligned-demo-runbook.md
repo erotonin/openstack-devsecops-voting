@@ -131,7 +131,7 @@ Trivy image scan after signature verification
 
 ## 5. Demo Staging Deploy Và DAST
 
-Sau khi CI main pass và staging branch được cập nhật:
+Sau khi CI trên `dev` pass và staging branch được cập nhật:
 
 ```powershell
 $ctx = "arn:aws:eks:us-east-1:800557027783:cluster/voting-app-cluster"
@@ -305,7 +305,7 @@ RTO: <number> minutes
 Nếu Azure public IP quota gây hạn chế, demo bằng port-forward:
 
 ```powershell
-kubectl --context devsecops-voting-aks -n voting-production port-forward svc/vote 8080:80
+kubectl --context devsecops-voting-aks -n voting port-forward svc/vote 8080:80
 ```
 
 Open:

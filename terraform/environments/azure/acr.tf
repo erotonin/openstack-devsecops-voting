@@ -48,6 +48,15 @@ resource "azurerm_federated_identity_credential" "github_actions_main" {
   subject             = "repo:${var.github_repo}:ref:refs/heads/main"
 }
 
+resource "azurerm_federated_identity_credential" "github_actions_dev" {
+  name                = "${var.name_prefix}-github-dev"
+  resource_group_name = module.azure_networking.resource_group_name
+  parent_id           = azurerm_user_assigned_identity.github_actions.id
+  audience            = ["api://AzureADTokenExchange"]
+  issuer              = "https://token.actions.githubusercontent.com"
+  subject             = "repo:${var.github_repo}:ref:refs/heads/dev"
+}
+
 resource "azurerm_role_assignment" "github_actions_acr_push" {
   principal_id                     = azurerm_user_assigned_identity.github_actions.principal_id
   role_definition_name             = "AcrPush"

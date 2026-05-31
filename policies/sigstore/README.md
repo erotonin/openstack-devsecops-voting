@@ -3,6 +3,7 @@
 This directory contains the cluster-side image signature policy for the AWS primary site.
 
 The policy verifies the voting app images in Amazon ECR using Sigstore keyless signatures issued by GitHub Actions through Fulcio.
+Release images are built and signed from the protected `dev` branch after staging validation, then promoted to production by a GitOps PR into `main`.
 
 ## Policy
 

@@ -24,12 +24,16 @@ This file summarizes the final project state for the capstone handoff.
 
 ## Verified Evidence
 
-- AWS ArgoCD application `voting-aws` is `Synced Healthy`.
+- AWS ArgoCD application `voting-staging` is `Synced Healthy`.
+- AWS ArgoCD application `voting-production` is `Synced Healthy`.
 - Azure ArgoCD application `voting-azure` is `Synced Healthy`.
 - ArgoCD SSO OIDC config is present on both clusters.
 - ArgoCD RBAC maps Entra group object IDs to admin and readonly roles.
 - PR security gate demo passed on pull request `#28`.
 - Production approval workflow_dispatch run passed.
+- Historical full release pipeline `26556068376` passed build, SBOM, Cosign sign/verify, Trivy image scan, staging GitOps, smoke test, OWASP ZAP DAST, and promotion PR creation.
+- GitOps promotion run `26556732195` passed after promotion PR `#72` was merged.
+- AWS staging, AWS production, and Azure warm standby `/healthz` endpoints returned HTTP 200.
 - Redis CloudWatch log group is encrypted with KMS and retains logs for 365 days.
 - Live AWS EKS was observed at Kubernetes `1.30`; AKS was observed at `1.34.7`.
 
@@ -39,9 +43,9 @@ This file summarizes the final project state for the capstone handoff.
 - ACR public access is kept for GitHub-hosted runners and AKS pulls; production should use private endpoints.
 - ACR Premium-only controls such as geo-replication, zone redundancy, retention policy, dedicated data endpoints, and Defender-integrated scanning are documented as production hardening items.
 - Checkov still runs in CI, but enterprise/cost-heavy controls are listed as accepted lab exceptions in `.github/workflows/ci-pipeline.yml`. The project continues to block high-signal failures through Gitleaks, Semgrep, tfsec, Trivy, Helm validation, Conftest, Gatekeeper, Kyverno, and Cosign verification.
-- Cross-cloud database replication is enabled with native PostgreSQL logical replication from AWS RDS to Azure PostgreSQL Flexible Server. It creates extra paid database resources, so destroy the stack after recording.
+- Cross-cloud database replication is implemented as an optional DR drill with native PostgreSQL logical replication from AWS RDS to Azure PostgreSQL Flexible Server. In the cost-capped live demo, Azure PostgreSQL may be disabled and represented by a restore-required runtime placeholder.
 - Canary/automated rollback is not enabled; current deployment uses rolling updates, readiness/liveness probes, and GitOps rollback by reverting Git. Production should add Argo Rollouts with Prometheus analysis.
-- AWS EKS should be upgraded from `1.30` to `1.31` before the demo handoff window if time allows, then advanced one minor version at a time. See `docs/eks-upgrade-runbook.md`.
+- AWS EKS has been brought to `1.31` in the current live environment. Future upgrades should continue one minor version at a time. See `docs/eks-upgrade-runbook.md`.
 
 ## Demo Commands
 

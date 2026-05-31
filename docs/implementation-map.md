@@ -35,7 +35,10 @@ This map links the project scope to the implementation files.
 | Azure standby ArgoCD | `terraform/environments/azure/helm.tf` |
 | AWS secret sync | External Secrets + AWS Secrets Manager in `terraform/environments/aws/helm.tf` |
 | Azure secret sync | External Secrets + Azure Key Vault in `terraform/environments/azure/helm.tf`, `secrets.tf` |
-| App Helm chart | `k8s/templates`, `k8s/values-prod.yaml`, `k8s/values-azure.yaml` |
+| AWS staging app | ArgoCD app `voting-staging`, namespace `voting-staging`, Git branch `staging`, `k8s/values-staging.yaml` |
+| AWS production app | ArgoCD app `voting-production`, namespace `voting-production`, Git branch `main`, `k8s/values-prod.yaml` |
+| Azure warm standby app | ArgoCD app `voting-azure`, namespace `voting`, Git branch `main`, `k8s/values-azure.yaml` |
+| App Helm chart | `k8s/templates`, `k8s/values-staging.yaml`, `k8s/values-prod.yaml`, `k8s/values-azure.yaml` |
 
 ## Policy And Runtime Security
 
@@ -75,6 +78,6 @@ This map links the project scope to the implementation files.
 
 ## Known Limits
 
-- Cross-cloud live database replication is implemented with native PostgreSQL logical replication. The cost-capped fallback remains restore or seed data.
+- Cross-cloud database replication is implemented as an optional native PostgreSQL logical replication drill. The cost-capped live demo can use a restore-required placeholder or seed data fallback.
 - Auto-quarantine is optional demo mode; default response is alert and human triage.
 - Full enterprise SSO is not implemented yet; ArgoCD RBAC groups are prepared as a baseline.

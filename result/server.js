@@ -10,6 +10,68 @@ var express = require('express'),
     io = require('socket.io')(server);
 
 var port = process.env.PORT || 4000;
+var dbConnected = false;
+
+function dbSslModeFromUrl(databaseUrl) {
+  var match = (databaseUrl || '').match(/[?&]sslmode=(disable|allow|prefer|require|verify-ca|verify-full)/i);
+  return match ? match[1].toLowerCase() : '';
+}
+
+function stripDatabaseUrlSslMode(databaseUrl) {
+  return (databaseUrl || '').replace(/([?&])sslmode=(disable|allow|prefer|require|verify-ca|verify-full)(&?)/ig, function(match, prefix, mode, suffix) {
+    if (prefix === '?' && suffix === '&') {
+      return '?';
+    }
+
+    if (suffix === '&') {
+      return prefix;
+    }
+
+    return '';
+  }).replace(/[?&]$/, '');
+}
+
+function envFlag(name) {
+  return (process.env[name] || '').toLowerCase();
+}
+
+function dbSslConfig(databaseUrl) {
+  var explicitSsl = (process.env.DB_SSL || '').toLowerCase();
+  var sslMode = (process.env.DB_SSL_MODE || dbSslModeFromUrl(databaseUrl)).toLowerCase();
+  var rejectUnauthorized = envFlag('DB_SSL_REJECT_UNAUTHORIZED');
+
+  if (explicitSsl === 'false' || sslMode === 'disable') {
+    return false;
+  }
+
+  if (explicitSsl === 'true' || sslMode === 'require' || sslMode === 'verify-ca' || sslMode === 'verify-full') {
+    return {
+      rejectUnauthorized: rejectUnauthorized ? rejectUnauthorized === 'true' : (sslMode === 'verify-ca' || sslMode === 'verify-full')
+    };
+  }
+
+  return false;
+}
+
+function dbPoolConfig() {
+  var databaseUrl = process.env.DATABASE_URL || '';
+
+  if (process.env.DATABASE_URL) {
+    return {
+      connectionString: stripDatabaseUrlSslMode(databaseUrl),
+      ssl: dbSslConfig(databaseUrl)
+    };
+  }
+
+  return {
+    host: process.env.DB_HOST || 'db',
+    port: parseInt(process.env.DB_PORT || '5432', 10),
+    user: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'postgres',
+    ssl: dbSslConfig(databaseUrl)
+  };
+}
 
 client.collectDefaultMetrics({ prefix: 'result_' });
 const httpRequestDuration = new client.Histogram({
@@ -33,17 +95,15 @@ io.on('connection', function (socket) {
   });
 });
 
-var pool = new Pool({
-  connectionString: process.env.DATABASE_URL || `postgres://${process.env.DB_USER || 'postgres'}:${process.env.DB_PASSWORD || 'postgres'}@${process.env.DB_HOST || 'db'}:${process.env.DB_PORT || '5432'}/${process.env.DB_NAME || 'postgres'}`,
-  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false' } : false
-});
+var pool = new Pool(dbPoolConfig());
 
 async.retry(
   {times: 1000, interval: 1000},
   function(callback) {
     pool.connect(function(err, client, done) {
       if (err) {
-        console.error("Waiting for db");
+        dbConnected = false;
+        console.error("Waiting for db: " + err.message);
       }
       callback(err, client);
     });
@@ -53,6 +113,7 @@ async.retry(
       return console.error("Giving up");
     }
     console.log("Connected to db");
+    dbConnected = true;
     getVotes(client);
   }
 );
@@ -60,8 +121,10 @@ async.retry(
 function getVotes(client) {
   client.query('SELECT vote, COUNT(id) AS count FROM votes GROUP BY vote', [], function(err, result) {
     if (err) {
+      dbConnected = false;
       console.error("Error performing query: " + err);
     } else {
+      dbConnected = true;
       var votes = collectVotesFromResult(result);
       io.sockets.emit("scores", JSON.stringify(votes));
     }
@@ -126,6 +189,10 @@ app.use(function (err, _req, res, next) {
 });
 
 app.get('/healthz', function (req, res) {
+  if (!dbConnected) {
+    return res.status(503).json({ status: 'error', service: 'result', dependency: 'db' });
+  }
+
   res.status(200).json({ status: 'ok', service: 'result' });
 });
 
