@@ -12,23 +12,65 @@ var express = require('express'),
 var port = process.env.PORT || 4000;
 var dbConnected = false;
 
-function dbSslConfig() {
+function dbSslModeFromUrl(databaseUrl) {
+  var match = (databaseUrl || '').match(/[?&]sslmode=(disable|allow|prefer|require|verify-ca|verify-full)/i);
+  return match ? match[1].toLowerCase() : '';
+}
+
+function stripDatabaseUrlSslMode(databaseUrl) {
+  return (databaseUrl || '').replace(/([?&])sslmode=(disable|allow|prefer|require|verify-ca|verify-full)(&?)/ig, function(match, prefix, mode, suffix) {
+    if (prefix === '?' && suffix === '&') {
+      return '?';
+    }
+
+    if (suffix === '&') {
+      return prefix;
+    }
+
+    return '';
+  }).replace(/[?&]$/, '');
+}
+
+function envFlag(name) {
+  return (process.env[name] || '').toLowerCase();
+}
+
+function dbSslConfig(databaseUrl) {
   var explicitSsl = (process.env.DB_SSL || '').toLowerCase();
-  var sslMode = (process.env.DB_SSL_MODE || '').toLowerCase();
-  var databaseUrl = process.env.DATABASE_URL || '';
-  var urlRequiresSsl = /[?&]sslmode=(require|verify-ca|verify-full)/i.test(databaseUrl);
+  var sslMode = (process.env.DB_SSL_MODE || dbSslModeFromUrl(databaseUrl)).toLowerCase();
+  var rejectUnauthorized = envFlag('DB_SSL_REJECT_UNAUTHORIZED');
 
   if (explicitSsl === 'false' || sslMode === 'disable') {
     return false;
   }
 
-  if (explicitSsl === 'true' || sslMode === 'require' || sslMode === 'verify-ca' || sslMode === 'verify-full' || urlRequiresSsl) {
+  if (explicitSsl === 'true' || sslMode === 'require' || sslMode === 'verify-ca' || sslMode === 'verify-full') {
     return {
-      rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED === 'true' || sslMode === 'verify-full'
+      rejectUnauthorized: rejectUnauthorized ? rejectUnauthorized === 'true' : (sslMode === 'verify-ca' || sslMode === 'verify-full')
     };
   }
 
   return false;
+}
+
+function dbPoolConfig() {
+  var databaseUrl = process.env.DATABASE_URL || '';
+
+  if (process.env.DATABASE_URL) {
+    return {
+      connectionString: stripDatabaseUrlSslMode(databaseUrl),
+      ssl: dbSslConfig(databaseUrl)
+    };
+  }
+
+  return {
+    host: process.env.DB_HOST || 'db',
+    port: parseInt(process.env.DB_PORT || '5432', 10),
+    user: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'postgres',
+    ssl: dbSslConfig(databaseUrl)
+  };
 }
 
 client.collectDefaultMetrics({ prefix: 'result_' });
@@ -53,10 +95,7 @@ io.on('connection', function (socket) {
   });
 });
 
-var pool = new Pool({
-  connectionString: process.env.DATABASE_URL || `postgres://${process.env.DB_USER || 'postgres'}:${process.env.DB_PASSWORD || 'postgres'}@${process.env.DB_HOST || 'db'}:${process.env.DB_PORT || '5432'}/${process.env.DB_NAME || 'postgres'}`,
-  ssl: dbSslConfig()
-});
+var pool = new Pool(dbPoolConfig());
 
 async.retry(
   {times: 1000, interval: 1000},
