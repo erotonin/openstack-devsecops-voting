@@ -35,12 +35,7 @@ spec:
         - count: 1
           entries:
           - keyless:
-              subject: "https://github.com/erotonin/devsecops-voting/.github/workflows/ci-pipeline.yml@refs/heads/main"
-              issuer: "https://token.actions.githubusercontent.com"
-              rekor:
-                url: https://rekor.sigstore.dev
-          - keyless:
-              subject: "https://github.com/erotonin/devsecops-voting/.github/workflows/ci-pipeline.yml@refs/heads/dev"
+              subject: "https://github.com/erotonin/devsecops-voting/.github/workflows/ci-pipeline.yml@refs/heads/*"
               issuer: "https://token.actions.githubusercontent.com"
               rekor:
                 url: https://rekor.sigstore.dev
