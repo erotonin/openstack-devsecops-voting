@@ -565,6 +565,17 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Prepare promotion branch from tested dev commit
+        if: steps.promote.outputs.should_promote == 'true'
+        env:
+          PROMOTION_BRANCH: "promote/images-${{ github.sha }}"
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git checkout -B "$PROMOTION_BRANCH" "$GITHUB_SHA"
+          git merge --no-edit -X ours origin/main
+
       - name: Update GitOps image tags
         if: steps.promote.outputs.should_promote == 'true'
         shell: pwsh
@@ -587,7 +598,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git checkout -B "$PROMOTION_BRANCH" "$GITHUB_SHA"
           git add k8s/values-prod.yaml k8s/values-azure.yaml
           if ! git diff --cached --quiet; then
             git commit -m "$PROMOTION_TITLE"
