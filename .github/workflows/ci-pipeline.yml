@@ -577,19 +577,43 @@ jobs:
 
       - name: Create promotion pull request
         if: steps.promote.outputs.should_promote == 'true'
-        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c
-        with:
-          token: ${{ secrets.ACTIONS_PR_TOKEN || github.token }}
-          base: main
-          branch: promote/images-${{ github.sha }}
-          title: "chore: promote staged images for ${{ github.sha }}"
-          commit-message: "chore: promote staged images for ${{ github.sha }}"
-          body: |
-            Promote signed images built from dev commit `${{ github.sha }}`.
+        env:
+          GH_TOKEN: ${{ secrets.ACTIONS_PR_TOKEN || github.token }}
+          PROMOTION_BRANCH: "promote/images-${{ github.sha }}"
+          PROMOTION_TITLE: "chore: promote staged images for ${{ github.sha }}"
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git checkout -B "$PROMOTION_BRANCH" "$GITHUB_SHA"
+          git add k8s/values-prod.yaml k8s/values-azure.yaml
+          if ! git diff --cached --quiet; then
+            git commit -m "$PROMOTION_TITLE"
+          fi
+          git push --force-with-lease origin "HEAD:$PROMOTION_BRANCH"
 
-            This release PR carries the tested source changes plus the production GitOps values that pin the exact image digests verified in staging.
-            Merge it after reviewing the successful dev build, signature verification, image scan, SBOM, staging deploy, and DAST jobs.
-          labels: gitops,promotion
+          cat > /tmp/promotion-pr-body.md <<'BODY'
+          Promote signed images built from the tested dev commit.
+
+          This release PR carries the tested source changes plus the production GitOps values that pin the exact image digests verified in staging.
+          Merge it after reviewing the successful dev build, signature verification, image scan, SBOM, staging deploy, and DAST jobs.
+          BODY
+
+          if gh pr view "$PROMOTION_BRANCH" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh pr edit "$PROMOTION_BRANCH" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$PROMOTION_TITLE" \
+              --body-file /tmp/promotion-pr-body.md
+          else
+            gh pr create \
+              --repo "$GITHUB_REPOSITORY" \
+              --base main \
+              --head "$PROMOTION_BRANCH" \
+              --title "$PROMOTION_TITLE" \
+              --body-file /tmp/promotion-pr-body.md
+          fi
 
   production-approval:
     name: Production approval gate
