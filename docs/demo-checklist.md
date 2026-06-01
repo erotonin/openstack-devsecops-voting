@@ -226,3 +226,5 @@ AWS la primary. Azure la warm standby de co duong recover khi primary site gap s
 Khong co mot tool quan trong nhat. Quan trong la cac lop kiem soat: source control, security gate, artifact integrity, GitOps deployment, runtime policy va recovery.
 
 - Demo trigger: 2026-06-01 08:38:40
+
+- Demo trigger: 2026-06-01 08:51:28
