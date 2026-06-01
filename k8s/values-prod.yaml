@@ -13,16 +13,16 @@ ingress:
 images:
   vote:
     repository: 800557027783.dkr.ecr.us-east-1.amazonaws.com/voting-app-vote
-    tag: b6808d95a232dd5f7558c0dac219d9c8ad2657ed
-    digest: sha256:9e5178ee12a6589521e0ab312ab1a39b052a01e889d8f3404a7bb5e0d7981111
+    tag: 83a7747b71b5efe6d9eeb998776d9e896e89ab15
+    digest: sha256:f9f43f2f3a059cfd28a81dfa82e1902866e9e62aa84a6b08a866b7392e5aa01e
   result:
     repository: 800557027783.dkr.ecr.us-east-1.amazonaws.com/voting-app-result
-    tag: b6808d95a232dd5f7558c0dac219d9c8ad2657ed
-    digest: sha256:633a19846e7503fd74ed52919b55eed1e45f33d1d8b4c807ecfd59f9d98864ff
+    tag: 83a7747b71b5efe6d9eeb998776d9e896e89ab15
+    digest: sha256:9831b4e0224564a2bca5c78478b5da1ccac83118f0ac8755bcdfe091863971cd
   worker:
     repository: 800557027783.dkr.ecr.us-east-1.amazonaws.com/voting-app-worker
-    tag: b6808d95a232dd5f7558c0dac219d9c8ad2657ed
-    digest: sha256:5eeb8c6ce16184688ae5672c8c4e67f9d352c7ae0301aa60c81ac9f8262fa979
+    tag: 83a7747b71b5efe6d9eeb998776d9e896e89ab15
+    digest: sha256:7e48a83c68bc68a2e5dbe3747bdc5649684bfaac548287e8c7355d1fc63cbd26
   redis:
     repository: redis
     tag: 7-alpine
