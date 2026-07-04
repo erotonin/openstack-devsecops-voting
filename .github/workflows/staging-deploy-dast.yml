@@ -1,0 +1,175 @@
+name: Staging deploy and DAST
+
+on:
+  push:
+    branches:
+      - staging
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+  security-events: write
+
+concurrency:
+  group: staging-deploy
+  cancel-in-progress: false
+
+jobs:
+  staging-deploy:
+    name: Build, deploy staging, and run DAST
+    runs-on: [self-hosted, linux, openstack]
+    if: github.actor != 'github-actions[bot]' && github.event.created != true
+    env:
+      HARBOR_REGISTRY: ${{ secrets.HARBOR_REGISTRY }}
+      HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
+      HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
+      IMAGE_TAG: ${{ github.sha }}
+      TRIVY_INSECURE: "true"
+    steps:
+      - name: Checkout staging
+        uses: actions/checkout@v4
+        with:
+          ref: staging
+          fetch-depth: 0
+
+      - name: Validate staging manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          terraform -chdir=terraform/openstack init -backend=false
+          terraform -chdir=terraform/openstack fmt -check
+          terraform -chdir=terraform/openstack validate
+          helm lint k8s
+          helm template voting-staging k8s \
+            -f k8s/values-openstack.yaml \
+            -f k8s/values-staging.yaml > /tmp/voting-staging.yaml
+          if command -v conftest >/dev/null 2>&1 && find policies/conftest -type f | grep -q .; then
+            conftest test --policy policies/conftest /tmp/voting-staging.yaml
+          fi
+
+      - name: Login to Harbor
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HARBOR_REGISTRY"
+          test -n "$HARBOR_USERNAME"
+          test -n "$HARBOR_PASSWORD"
+          echo "$HARBOR_PASSWORD" | docker login "$HARBOR_REGISTRY" --username "$HARBOR_USERNAME" --password-stdin
+
+      - name: Install Syft
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v syft >/dev/null 2>&1; then
+            syft version
+            exit 0
+          fi
+          mkdir -p "$RUNNER_TEMP/bin"
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b "$RUNNER_TEMP/bin"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+          export PATH="$RUNNER_TEMP/bin:$PATH"
+          syft version
+
+      - name: Build, SBOM, and push images
+        id: images
+        shell: bash
+        run: |
+          set -euo pipefail
+          for service in vote result worker; do
+            image="$HARBOR_REGISTRY/voting/${service}:${IMAGE_TAG}"
+            docker build --network=host -t "$image" "./${service}"
+            syft "$image" -o "spdx-json=sbom-${service}.spdx.json"
+            docker push "$image"
+            digest="$(docker inspect --format='{{index .RepoDigests 0}}' "$image" | cut -d'@' -f2)"
+            test -n "$digest"
+            echo "${service}_digest=${digest}" >> "$GITHUB_OUTPUT"
+            echo "${service}_ref=${HARBOR_REGISTRY}/voting/${service}@${digest}" >> "$GITHUB_OUTPUT"
+          done
+
+      - name: Upload SBOMs
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-sboms
+          path: sbom-*.spdx.json
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign image digests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cosign sign --yes --allow-insecure-registry "${{ steps.images.outputs.vote_ref }}"
+          cosign sign --yes --allow-insecure-registry "${{ steps.images.outputs.result_ref }}"
+          cosign sign --yes --allow-insecure-registry "${{ steps.images.outputs.worker_ref }}"
+
+      - name: Verify image signatures
+        shell: bash
+        env:
+          SIGNATURE_IDENTITY: https://github.com/${{ github.repository }}/.github/workflows/staging-deploy-dast.yml@refs/heads/staging
+        run: |
+          set -euo pipefail
+          bash scripts/verify-cosign-signature-policy.sh "${{ steps.images.outputs.vote_ref }}" "$SIGNATURE_IDENTITY"
+          bash scripts/verify-cosign-signature-policy.sh "${{ steps.images.outputs.result_ref }}" "$SIGNATURE_IDENTITY"
+          bash scripts/verify-cosign-signature-policy.sh "${{ steps.images.outputs.worker_ref }}" "$SIGNATURE_IDENTITY"
+
+      - name: Trivy scan vote image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.images.outputs.vote_ref }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Trivy scan result image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.images.outputs.result_ref }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Trivy scan worker image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.images.outputs.worker_ref }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Update staging desired state
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/ci/update-values-image-digests.py \
+            --values k8s/values-staging.yaml \
+            --tag "$IMAGE_TAG" \
+            --vote-digest "${{ steps.images.outputs.vote_digest }}" \
+            --result-digest "${{ steps.images.outputs.result_digest }}" \
+            --worker-digest "${{ steps.images.outputs.worker_digest }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add k8s/values-staging.yaml
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: update staging image digests ${IMAGE_TAG}"
+            git push origin HEAD:staging
+          fi
+
+      - name: Ensure ArgoCD staging app exists
+        shell: bash
+        run: kubectl apply -f k8s/argocd-app-staging.yaml
+
+      - name: Wait for staging deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          kubectl -n argocd annotate application voting-staging argocd.argoproj.io/refresh=hard --overwrite
+          kubectl -n argocd wait application/voting-staging --for=jsonpath='{.status.sync.status}'=Synced --timeout=10m
+          kubectl -n voting-staging rollout status deploy/vote --timeout=5m
+          kubectl -n voting-staging rollout status deploy/result --timeout=5m
+          kubectl -n voting-staging rollout status deploy/worker --timeout=5m
+
+      - name: Run DAST Job
+        shell: bash
+        run: bash scripts/ci/run-zap-job.sh

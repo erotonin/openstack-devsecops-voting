@@ -18,6 +18,9 @@ spec:
     metadata:
       labels:
         app: vote
+{{- with .Values.podLabels }}
+{{ toYaml . | indent 8 }}
+{{- end }}
     spec:
       serviceAccountName: {{ .Values.serviceAccounts.vote.name }}
       {{- with .Values.imagePullSecrets }}
@@ -37,7 +40,11 @@ spec:
             app: vote
       containers:
       - name: vote
-        image: "{{ .Values.images.vote.repository }}:{{ .Values.images.vote.tag }}{{- with .Values.images.vote.digest }}@{{ . }}{{- end }}"
+        {{- if .Values.images.vote.digest }}
+        image: "{{ .Values.images.vote.repository }}@{{ .Values.images.vote.digest }}"
+        {{- else }}
+        image: "{{ .Values.images.vote.repository }}:{{ .Values.images.vote.tag }}"
+        {{- end }}
         imagePullPolicy: IfNotPresent
         volumeMounts:
         - name: tmp
@@ -46,6 +53,8 @@ spec:
         - secretRef:
             name: {{ .Values.appSecretName }}
         env:
+        - name: HOME
+          value: /tmp
         {{- if .Values.otel.enabled }}
         - name: OTEL_SERVICE_NAME
           value: vote

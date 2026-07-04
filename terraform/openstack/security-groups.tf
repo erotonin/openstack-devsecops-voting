@@ -4,6 +4,7 @@ resource "openstack_networking_secgroup_v2" "ssh" {
 }
 
 resource "openstack_networking_secgroup_rule_v2" "ssh_ingress" {
+  # checkov:skip=CKV_OPENSTACK_2: Allow SSH ingress for lab admin fallback
   direction         = "ingress"
   ethertype         = "IPv4"
   protocol          = "tcp"

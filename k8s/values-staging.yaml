@@ -1,0 +1,20 @@
+environment: staging
+
+images:
+  vote:
+    tag: 8e70c1404d71beb6501e6b070580962f1060c0a8
+    digest: sha256:ea871f42055be6c9e771f878544416898f61113bf9e282c82b7a008b6ae440bf
+  result:
+    tag: 8e70c1404d71beb6501e6b070580962f1060c0a8
+    digest: sha256:40d7df5be4daafe82bbdc1ea049f08a88c7c6375d2da180bb625febc7acce54a
+  worker:
+    tag: 8e70c1404d71beb6501e6b070580962f1060c0a8
+    digest: sha256:bf3408d0d8942f08c71500452a7b106592249e4192b94ba60ce85125fa0d44a9
+
+ingress:
+  hosts:
+    vote: vote-staging.openstack.local
+    result: result-staging.openstack.local
+
+podLabels:
+  environment: staging

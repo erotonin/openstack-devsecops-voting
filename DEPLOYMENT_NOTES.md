@@ -56,6 +56,48 @@ kubectl get nodes -o wide
 
 Install NGINX Ingress Controller, ArgoCD, and the observability charts after the cluster is healthy.
 
+## Repository Branches
+
+Create the staging branch from main once:
+
+```bash
+git checkout main
+git pull origin main
+git checkout -b staging
+git push -u origin staging
+```
+
+Day-to-day changes should start on `feature/*` branches and enter the environments through pull requests.
+
+## GitHub Runner And Secrets
+
+Register a self-hosted runner inside the OpenStack lab network and give it these labels:
+
+```text
+self-hosted
+linux
+openstack
+```
+
+The runner must have Docker, kubectl, Helm, Terraform, and access to the Magnum cluster through its local kubeconfig. It must also be able to reach the Harbor endpoint.
+
+Configure repository secrets:
+
+```text
+HARBOR_REGISTRY
+HARBOR_USERNAME
+HARBOR_PASSWORD
+```
+
+Install ArgoCD in the Kubernetes cluster, then apply the two application manifests:
+
+```bash
+kubectl apply -f k8s/argocd-app-staging.yaml
+kubectl apply -f k8s/argocd-app-prod.yaml
+```
+
+The staging app tracks the `staging` branch and deploys to `voting-staging`. The production app tracks `main` and deploys to `voting-prod`.
+
 ## Kubespray Fallback
 
 Use Kubespray only when Magnum cannot create a working cluster template or cluster in the local OpenStack environment.

@@ -1,0 +1,55 @@
+name: Production GitOps
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  production-sync:
+    name: Validate and sync production
+    runs-on: [self-hosted, linux, openstack]
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Validate production manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          helm lint k8s
+          helm template voting-prod k8s \
+            -f k8s/values-openstack.yaml \
+            -f k8s/values-prod.yaml > /tmp/voting-prod.yaml
+          if command -v conftest >/dev/null 2>&1 && find policies/conftest -type f | grep -q .; then
+            conftest test --policy policies/conftest /tmp/voting-prod.yaml
+          fi
+
+      - name: Verify production values pin digests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/ci/verify-values-digests.py \
+            --base k8s/values-openstack.yaml \
+            --values k8s/values-prod.yaml
+
+      - name: Ensure ArgoCD production app exists
+        shell: bash
+        run: kubectl apply -f k8s/argocd-app-prod.yaml
+
+      - name: Wait for production deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          kubectl -n argocd annotate application voting-prod argocd.argoproj.io/refresh=hard --overwrite
+          kubectl -n argocd wait application/voting-prod --for=jsonpath='{.status.sync.status}'=Synced --timeout=10m
+          kubectl -n voting-prod rollout status deploy/vote --timeout=5m
+          kubectl -n voting-prod rollout status deploy/result --timeout=5m
+          kubectl -n voting-prod rollout status deploy/worker --timeout=5m
+          kubectl -n argocd get application voting-prod -o wide

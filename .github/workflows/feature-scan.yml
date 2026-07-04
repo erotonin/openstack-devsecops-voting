@@ -1,0 +1,100 @@
+name: Feature scan
+
+on:
+  push:
+    branches:
+      - "feature/**"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  light-validation:
+    name: Light validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Install Helm
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v helm >/dev/null 2>&1; then
+            helm version
+            exit 0
+          fi
+          curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+          helm version
+
+      - name: Gitleaks secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Semgrep SAST
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: auto
+
+      - name: Trivy filesystem and dependency scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Application sanity checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile vote/app.py
+          if [[ -f result/package-lock.json ]]; then
+            npm --prefix result ci --ignore-scripts
+            npm --prefix result audit --audit-level=high
+          fi
+          if [[ -f worker/Worker.csproj ]]; then
+            dotnet restore worker/Worker.csproj
+            dotnet build worker/Worker.csproj --configuration Release --no-restore
+          fi
+
+      - name: Terraform format and validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          terraform -chdir=terraform/openstack init -backend=false
+          terraform -chdir=terraform/openstack fmt -check
+          terraform -chdir=terraform/openstack validate
+
+      - name: Helm render
+        shell: bash
+        run: |
+          set -euo pipefail
+          helm lint k8s
+          helm template voting-feature k8s -f k8s/values-openstack.yaml > /tmp/voting-feature.yaml
+
+      - name: Conftest policy scan
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! find policies/conftest -type f | grep -q .; then
+            echo "No Conftest policies found."
+            exit 0
+          fi
+          gh release download v0.56.0 \
+            --repo open-policy-agent/conftest \
+            --pattern conftest_0.56.0_Linux_x86_64.tar.gz \
+            --dir /tmp
+          tar xzf /tmp/conftest_0.56.0_Linux_x86_64.tar.gz -C /tmp conftest
+          sudo mv /tmp/conftest /usr/local/bin/conftest
+          conftest test --policy policies/conftest /tmp/voting-feature.yaml

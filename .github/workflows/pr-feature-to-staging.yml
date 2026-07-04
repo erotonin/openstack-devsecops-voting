@@ -1,0 +1,131 @@
+name: PR feature to staging
+
+on:
+  pull_request:
+    branches:
+      - staging
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: read
+
+jobs:
+  full-pr-gate:
+    name: Full PR gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify source branch
+        shell: bash
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+          if [[ "$HEAD_REF" != feature/* ]]; then
+            echo "Only feature/* branches may target staging."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Install Helm
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v helm >/dev/null 2>&1; then
+            helm version
+            exit 0
+          fi
+          curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+          helm version
+
+      - name: Gitleaks secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Semgrep SAST
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: auto
+
+      - name: Trivy filesystem and dependency scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Checkov IaC and manifest scan
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: .
+          framework: terraform,kubernetes,dockerfile,github_actions
+          quiet: true
+          skip_path: tests/policy,k8s/dast
+          skip_check: CKV_GHA_7
+          soft_fail: false
+
+      - name: tfsec Terraform scan
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v tfsec >/dev/null 2>&1; then
+            mkdir -p "$RUNNER_TEMP/bin"
+            curl -sSfL https://github.com/aquasecurity/tfsec/releases/download/v1.28.14/tfsec-linux-amd64 -o "$RUNNER_TEMP/bin/tfsec"
+            chmod +x "$RUNNER_TEMP/bin/tfsec"
+            echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+            export PATH="$RUNNER_TEMP/bin:$PATH"
+          fi
+          tfsec --exclude openstack-networking-no-public-ingress terraform/openstack
+
+      - name: Terraform format and validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          terraform -chdir=terraform/openstack init -backend=false
+          terraform -chdir=terraform/openstack fmt -check
+          terraform -chdir=terraform/openstack validate
+
+      - name: Helm render
+        shell: bash
+        run: |
+          set -euo pipefail
+          helm lint k8s
+          helm template voting-staging k8s \
+            -f k8s/values-openstack.yaml \
+            -f k8s/values-staging.yaml > /tmp/voting-staging.yaml
+
+      - name: Conftest policy scan
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! find policies/conftest -type f | grep -q .; then
+            echo "No Conftest policies found."
+            exit 0
+          fi
+          gh release download v0.56.0 \
+            --repo open-policy-agent/conftest \
+            --pattern conftest_0.56.0_Linux_x86_64.tar.gz \
+            --dir /tmp
+          tar xzf /tmp/conftest_0.56.0_Linux_x86_64.tar.gz -C /tmp conftest
+          sudo mv /tmp/conftest /usr/local/bin/conftest
+          conftest test --policy policies/conftest /tmp/voting-staging.yaml
+
+      - name: Local Docker build
+        shell: bash
+        run: |
+          set -euo pipefail
+          for service in vote result worker; do
+            docker build --network=host -t "voting-${service}:pr-${GITHUB_SHA}" "./${service}"
+          done
