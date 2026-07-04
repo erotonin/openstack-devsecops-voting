@@ -53,6 +53,8 @@ spec:
         - secretRef:
             name: {{ .Values.appSecretName }}
         env:
+        - name: HOME
+          value: /tmp
         {{- if .Values.otel.enabled }}
         - name: OTEL_SERVICE_NAME
           value: vote
