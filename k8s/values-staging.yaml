@@ -2,14 +2,14 @@ environment: staging
 
 images:
   vote:
-    tag: staging
-    digest: ""
+    tag: 8d4473020e2a8e7d984da8708d8fee32f964074e
+    digest: sha256:f4f3f6d5d87acec5c2eaa05aa5a58f237e496bef55292b50434568ebafe1ee89
   result:
-    tag: staging
-    digest: ""
+    tag: 8d4473020e2a8e7d984da8708d8fee32f964074e
+    digest: sha256:16c173593db06e9779f19ee661e5dab0082bb8692b9e2a47dc4737b5a1e2c3f5
   worker:
-    tag: staging
-    digest: ""
+    tag: 8d4473020e2a8e7d984da8708d8fee32f964074e
+    digest: sha256:b8ed808fdc2fb0fc012f7687522d11523f15166752da5e0c96ae74cc40edf5d5
 
 ingress:
   hosts:
