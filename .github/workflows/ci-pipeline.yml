@@ -60,7 +60,7 @@ jobs:
           dotnet build worker/Worker.csproj --configuration Release --no-restore
 
       - name: Checkov IaC and manifest scan
-        uses: bridgecrewio/checkov-action@4048c972aae68d0b983a48bb3479aab2d877b898
+        uses: bridgecrewio/checkov-action@a7683e7b72a04503521247973281ec8142e1ac1f
         with:
           directory: .
           framework: terraform,kubernetes,dockerfile,github_actions
