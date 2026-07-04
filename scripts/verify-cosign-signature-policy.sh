@@ -19,6 +19,7 @@ cert_pem="$tmpdir/signing-cert.pem"
 cert_text="$tmpdir/signing-cert.txt"
 
 cosign verify \
+  --allow-insecure-registry \
   --certificate-oidc-issuer "$issuer" \
   --certificate-identity-regexp "$identity_regexp" \
   --output json \
@@ -32,7 +33,7 @@ jq -r '
 ' "$verify_json" > "$cert_pem"
 
 if ! grep -q "BEGIN CERTIFICATE" "$cert_pem"; then
-  cosign download signature "$image_ref" > "$signatures_json"
+  cosign download signature --allow-insecure-registry "$image_ref" > "$signatures_json"
   jq -r '
     def entries: if type == "array" then .[] elif type == "object" then . else empty end;
     [entries | .cert? // .Cert? // .certificate? // .Certificate? // empty][0] // empty

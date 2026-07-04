@@ -19,6 +19,7 @@ jobs:
       HARBOR_REGISTRY: ${{ secrets.HARBOR_REGISTRY }}
       HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
       HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
+      TRIVY_INSECURE: "true"
     steps:
       - name: Verify source branch
         shell: bash

@@ -25,6 +25,7 @@ jobs:
       HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
       HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
       IMAGE_TAG: ${{ github.sha }}
+      TRIVY_INSECURE: "true"
     steps:
       - name: Checkout staging
         uses: actions/checkout@v4
@@ -99,9 +100,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cosign sign --yes "${{ steps.images.outputs.vote_ref }}"
-          cosign sign --yes "${{ steps.images.outputs.result_ref }}"
-          cosign sign --yes "${{ steps.images.outputs.worker_ref }}"
+          cosign sign --yes --allow-insecure-registry "${{ steps.images.outputs.vote_ref }}"
+          cosign sign --yes --allow-insecure-registry "${{ steps.images.outputs.result_ref }}"
+          cosign sign --yes --allow-insecure-registry "${{ steps.images.outputs.worker_ref }}"
 
       - name: Verify image signatures
         shell: bash
