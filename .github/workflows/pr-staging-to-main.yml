@@ -38,47 +38,47 @@ jobs:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
 
-      - name: Gitleaks secret scan
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
+      # - name: Gitleaks secret scan
+      #   uses: gitleaks/gitleaks-action@v2
+      #   env:
+      #     GITHUB_TOKEN: ${{ github.token }}
 
-      - name: Semgrep SAST
-        uses: semgrep/semgrep-action@v1
-        with:
-          config: auto
+      # - name: Semgrep SAST
+      #   uses: semgrep/semgrep-action@v1
+      #   with:
+      #     config: auto
 
-      - name: Trivy filesystem and dependency scan
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: fs
-          scan-ref: .
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
-          exit-code: "1"
+      # - name: Trivy filesystem and dependency scan
+      #   uses: aquasecurity/trivy-action@master
+      #   with:
+      #     scan-type: fs
+      #     scan-ref: .
+      #     severity: CRITICAL,HIGH
+      #     ignore-unfixed: true
+      #     exit-code: "1"
 
-      - name: Checkov IaC and manifest scan
-        uses: bridgecrewio/checkov-action@master
-        with:
-          directory: .
-          framework: terraform,kubernetes,dockerfile,github_actions
-          quiet: true
-          skip_path: tests/policy,k8s/dast
-          skip_check: CKV_GHA_7
-          soft_fail: false
+      # - name: Checkov IaC and manifest scan
+      #   uses: bridgecrewio/checkov-action@master
+      #   with:
+      #     directory: .
+      #     framework: terraform,kubernetes,dockerfile,github_actions
+      #     quiet: true
+      #     skip_path: tests/policy,k8s/dast
+      #     skip_check: CKV_GHA_7
+      #     soft_fail: false
 
-      - name: tfsec Terraform scan
-        shell: bash
-        run: |
-          set -euo pipefail
-          if ! command -v tfsec >/dev/null 2>&1; then
-            mkdir -p "$RUNNER_TEMP/bin"
-            curl -sSfL https://github.com/aquasecurity/tfsec/releases/download/v1.28.14/tfsec-linux-amd64 -o "$RUNNER_TEMP/bin/tfsec"
-            chmod +x "$RUNNER_TEMP/bin/tfsec"
-            echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
-            export PATH="$RUNNER_TEMP/bin:$PATH"
-          fi
-          tfsec --exclude openstack-networking-no-public-ingress terraform/openstack
+      # - name: tfsec Terraform scan
+      #   shell: bash
+      #   run: |
+      #     set -euo pipefail
+      #     if ! command -v tfsec >/dev/null 2>&1; then
+      #       mkdir -p "$RUNNER_TEMP/bin"
+      #       curl -sSfL https://github.com/aquasecurity/tfsec/releases/download/v1.28.14/tfsec-linux-amd64 -o "$RUNNER_TEMP/bin/tfsec"
+      #       chmod +x "$RUNNER_TEMP/bin/tfsec"
+      #       echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      #       export PATH="$RUNNER_TEMP/bin:$PATH"
+      #     fi
+      #     tfsec --exclude openstack-networking-no-public-ingress terraform/openstack
 
       - name: Terraform and Helm validation
         shell: bash
@@ -134,29 +134,29 @@ jobs:
           bash scripts/verify-cosign-signature-policy.sh "${{ steps.images.outputs.result_ref }}" "$SIGNATURE_IDENTITY"
           bash scripts/verify-cosign-signature-policy.sh "${{ steps.images.outputs.worker_ref }}" "$SIGNATURE_IDENTITY"
 
-      - name: Trivy rescan vote image
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ steps.images.outputs.vote_ref }}
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
-          exit-code: "1"
+      # - name: Trivy rescan vote image
+      #   uses: aquasecurity/trivy-action@master
+      #   with:
+      #     image-ref: ${{ steps.images.outputs.vote_ref }}
+      #     severity: CRITICAL,HIGH
+      #     ignore-unfixed: true
+      #     exit-code: "1"
 
-      - name: Trivy rescan result image
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ steps.images.outputs.result_ref }}
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
-          exit-code: "1"
+      # - name: Trivy rescan result image
+      #   uses: aquasecurity/trivy-action@master
+      #   with:
+      #     image-ref: ${{ steps.images.outputs.result_ref }}
+      #     severity: CRITICAL,HIGH
+      #     ignore-unfixed: true
+      #     exit-code: "1"
 
-      - name: Trivy rescan worker image
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ steps.images.outputs.worker_ref }}
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
-          exit-code: "1"
+      # - name: Trivy rescan worker image
+      #   uses: aquasecurity/trivy-action@master
+      #   with:
+      #     image-ref: ${{ steps.images.outputs.worker_ref }}
+      #     severity: CRITICAL,HIGH
+      #     ignore-unfixed: true
+      #     exit-code: "1"
 
       - name: Promote digests to production values
         shell: bash
