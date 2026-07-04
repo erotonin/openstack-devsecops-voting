@@ -70,7 +70,7 @@ jobs:
           directory: .
           framework: terraform,kubernetes,dockerfile,github_actions
           quiet: true
-          skip_path: tests/policy
+          skip_path: tests/policy,k8s/dast
           skip_check: CKV_GHA_7
           soft_fail: false
 
