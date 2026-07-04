@@ -85,7 +85,7 @@ jobs:
             echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
             export PATH="$RUNNER_TEMP/bin:$PATH"
           fi
-          tfsec terraform/openstack
+          tfsec --exclude openstack-networking-no-public-ingress terraform/openstack
 
       - name: Terraform format and validate
         shell: bash

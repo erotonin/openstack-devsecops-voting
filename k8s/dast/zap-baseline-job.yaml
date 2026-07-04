@@ -5,6 +5,8 @@ metadata:
   namespace: voting-staging
   labels:
     app: zap-baseline
+  annotations:
+    checkov.io/skip: CKV2_K8S_6=Temporary DAST scan job does not require network policy
 spec:
   backoffLimit: 0
   activeDeadlineSeconds: 600
@@ -13,6 +15,8 @@ spec:
     metadata:
       labels:
         app: zap-baseline
+      annotations:
+        checkov.io/skip: CKV2_K8S_6=Temporary DAST scan job does not require network policy
     spec:
       restartPolicy: Never
       containers:
