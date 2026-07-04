@@ -75,12 +75,17 @@ jobs:
           soft_fail: false
 
       - name: tfsec Terraform scan
-        uses: aquasecurity/tfsec-action@v1.0.3
-        with:
-          working_directory: terraform/openstack
-          version: v1.28.14
-          github_token: ${{ github.token }}
-          soft_fail: false
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v tfsec >/dev/null 2>&1; then
+            mkdir -p "$RUNNER_TEMP/bin"
+            curl -sSfL https://github.com/aquasecurity/tfsec/releases/download/v1.28.14/tfsec-linux-amd64 -o "$RUNNER_TEMP/bin/tfsec"
+            chmod +x "$RUNNER_TEMP/bin/tfsec"
+            echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+            export PATH="$RUNNER_TEMP/bin:$PATH"
+          fi
+          tfsec terraform/openstack
 
       - name: Terraform format and validate
         shell: bash
