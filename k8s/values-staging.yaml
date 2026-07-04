@@ -1,0 +1,20 @@
+environment: staging
+
+images:
+  vote:
+    tag: staging
+    digest: ""
+  result:
+    tag: staging
+    digest: ""
+  worker:
+    tag: staging
+    digest: ""
+
+ingress:
+  hosts:
+    vote: vote-staging.openstack.local
+    result: result-staging.openstack.local
+
+podLabels:
+  environment: staging

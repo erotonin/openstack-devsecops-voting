@@ -1,0 +1,37 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: zap-baseline
+  namespace: voting-staging
+  labels:
+    app: zap-baseline
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 600
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app: zap-baseline
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: zap
+        image: ghcr.io/zaproxy/zaproxy:stable
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: ZAP_TARGET
+          value: http://vote.voting-staging.svc.cluster.local
+        command:
+        - sh
+        - -c
+        - |
+          mkdir -p /zap/wrk
+          zap-baseline.py -t "${ZAP_TARGET:-http://vote:80}" -I -r /zap/wrk/zap-report.html
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: "1"
+            memory: 1Gi

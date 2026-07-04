@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: voting-prod
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/erotonin/openstack-devsecops-voting.git
+    targetRevision: main
+    path: k8s
+    helm:
+      valueFiles:
+        - values-openstack.yaml
+        - values-prod.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: voting-prod
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

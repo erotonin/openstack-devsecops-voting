@@ -20,6 +20,9 @@ spec:
     metadata:
       labels:
         app: worker
+{{- with .Values.podLabels }}
+{{ toYaml . | indent 8 }}
+{{- end }}
     spec:
       serviceAccountName: {{ .Values.serviceAccounts.worker.name }}
       {{- with .Values.imagePullSecrets }}
@@ -39,7 +42,11 @@ spec:
             app: worker
       containers:
       - name: worker
-        image: "{{ .Values.images.worker.repository }}:{{ .Values.images.worker.tag }}{{- with .Values.images.worker.digest }}@{{ . }}{{- end }}"
+        {{- if .Values.images.worker.digest }}
+        image: "{{ .Values.images.worker.repository }}@{{ .Values.images.worker.digest }}"
+        {{- else }}
+        image: "{{ .Values.images.worker.repository }}:{{ .Values.images.worker.tag }}"
+        {{- end }}
         imagePullPolicy: IfNotPresent
         envFrom:
         - secretRef:

@@ -1,6 +1,6 @@
 # DevSecOps Voting App on Kubernetes running on OpenStack
 
-This repository deploys the Voting App as a cloud-native workload on Kubernetes running on OpenStack private cloud infrastructure. The project is intentionally scoped to a small lab: one control-plane node, one worker node, Harbor on a separate Nova VM, GitOps through ArgoCD, and observability for metrics, logs, and traces.
+This repository deploys the Voting App as a cloud-native workload on Kubernetes running on OpenStack private cloud infrastructure. The project is intentionally scoped to a small lab: one control-plane node, one worker node, one Harbor VM, one Kubernetes cluster, two application namespaces, and one shared observability stack.
 
 ## Architecture
 
@@ -30,7 +30,7 @@ Kubernetes provides the application layer:
 
 - Deployments and Pods run `vote`, `result`, `worker`, Redis, and PostgreSQL.
 - Services expose stable in-cluster endpoints.
-- NGINX Ingress routes `vote.openstack.local` and `result.openstack.local`.
+- NGINX Ingress routes staging and production hostnames.
 - PostgreSQL uses a PVC backed by the `cinder-csi` StorageClass.
 - Redis remains ephemeral because it is only the demo queue/cache.
 
@@ -46,7 +46,26 @@ The target host is a constrained laptop with 32 GB RAM and roughly 400 GB SSD/NV
 
 ## CI/CD
 
-The GitHub Actions workflow runs security and build gates:
+The branch model is:
+
+```text
+feature/* -> staging -> main
+```
+
+- `feature/*` branches run light validation only.
+- `staging` represents the staging environment in namespace `voting-staging`.
+- `main` represents production in namespace `voting-prod`.
+- Production promotes the exact image digests verified in staging; it does not rebuild images.
+
+The workflows are split by lifecycle stage:
+
+- `feature-scan.yml`: light scan on `feature/**`.
+- `pr-feature-to-staging.yml`: full safe PR gate before merge into `staging`.
+- `staging-deploy-dast.yml`: build, sign, scan, push to Harbor, update `values-staging.yaml`, let ArgoCD deploy staging, then run DAST.
+- `pr-staging-to-main.yml`: verify staging digests and signatures, then copy those digests to `values-prod.yaml`.
+- `production-gitops.yml`: validate production desired state and wait for ArgoCD production sync.
+
+The gates include:
 
 - Gitleaks secret scan.
 - Semgrep SAST.
@@ -68,7 +87,9 @@ Expected repository secrets:
 - `HARBOR_USERNAME`
 - `HARBOR_PASSWORD`
 
-The pipeline updates the GitOps values file with the pushed image tag. ArgoCD syncs desired state from Git; CI does not run `kubectl apply` against the application namespace.
+Harbor and Kubernetes jobs run on a self-hosted runner inside the OpenStack lab network with labels `self-hosted`, `linux`, and `openstack`. GitHub-hosted runners are used only for safe checks that do not need access to the private lab network.
+
+DAST runs as a temporary Kubernetes Job in `voting-staging`. It is not part of the normal production Helm release.
 
 ## Harbor
 
@@ -117,11 +138,18 @@ The exact Magnum CLI flow is in [DEPLOYMENT_NOTES.md](DEPLOYMENT_NOTES.md).
 
 ## GitOps Deployment
 
-Create the namespace and Harbor pull secret:
+Create the namespaces and Harbor pull secrets:
 
 ```bash
-kubectl create namespace voting
-kubectl -n voting create secret docker-registry harbor-pull \
+kubectl create namespace voting-staging
+kubectl create namespace voting-prod
+
+kubectl -n voting-staging create secret docker-registry harbor-pull \
+  --docker-server="$HARBOR_REGISTRY" \
+  --docker-username="$HARBOR_USERNAME" \
+  --docker-password="$HARBOR_PASSWORD"
+
+kubectl -n voting-prod create secret docker-registry harbor-pull \
   --docker-server="$HARBOR_REGISTRY" \
   --docker-username="$HARBOR_USERNAME" \
   --docker-password="$HARBOR_PASSWORD"
@@ -131,13 +159,15 @@ Render locally:
 
 ```bash
 helm lint k8s
-helm template voting-app k8s -f k8s/values-openstack.yaml
+helm template voting-staging k8s -f k8s/values-openstack.yaml -f k8s/values-staging.yaml
+helm template voting-prod k8s -f k8s/values-openstack.yaml -f k8s/values-prod.yaml
 ```
 
-ArgoCD application manifest:
+ArgoCD application manifests:
 
 ```bash
-kubectl apply -f k8s/argocd-app-openstack.yaml
+kubectl apply -f k8s/argocd-app-staging.yaml
+kubectl apply -f k8s/argocd-app-prod.yaml
 ```
 
 ## Storage Path

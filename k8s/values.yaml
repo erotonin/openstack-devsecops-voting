@@ -1,5 +1,7 @@
 replicaCount: 1
 
+environment: openstack
+
 service:
   type: ClusterIP
 
@@ -18,6 +20,8 @@ ingress:
   hosts:
     vote: vote.openstack.local
     result: result.openstack.local
+
+podLabels: {}
 
 images:
   vote:

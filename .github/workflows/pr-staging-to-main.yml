@@ -1,0 +1,172 @@
+name: PR staging to main
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  id-token: write
+  security-events: write
+  pull-requests: read
+
+jobs:
+  promotion-gate:
+    name: Promotion gate
+    runs-on: [self-hosted, linux, openstack]
+    env:
+      HARBOR_REGISTRY: ${{ secrets.HARBOR_REGISTRY }}
+      HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
+      HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
+    steps:
+      - name: Verify source branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.head_ref }}" != "staging" ]]; then
+            echo "Only the staging branch may be promoted to main."
+            exit 1
+          fi
+
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Gitleaks secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Semgrep SAST
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: auto
+
+      - name: Trivy filesystem and dependency scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Checkov IaC and manifest scan
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: .
+          framework: terraform,kubernetes,dockerfile,github_actions
+          quiet: true
+          skip_path: tests/policy
+          skip_check: CKV_GHA_7
+          soft_fail: false
+
+      - name: tfsec Terraform scan
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          working_directory: terraform/openstack
+          version: v1.28.14
+          github_token: ${{ github.token }}
+          soft_fail: false
+
+      - name: Terraform and Helm validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          terraform -chdir=terraform/openstack init -backend=false
+          terraform -chdir=terraform/openstack fmt -check
+          terraform -chdir=terraform/openstack validate
+          helm lint k8s
+          helm template voting-prod k8s \
+            -f k8s/values-openstack.yaml \
+            -f k8s/values-prod.yaml > /tmp/voting-prod.yaml
+          if command -v conftest >/dev/null 2>&1 && find policies/conftest -type f | grep -q .; then
+            conftest test --policy policies/conftest /tmp/voting-prod.yaml
+          fi
+
+      - name: Read staging image digests
+        id: images
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/ci/verify-values-digests.py \
+            --base k8s/values-openstack.yaml \
+            --values k8s/values-staging.yaml \
+            --output /tmp/staging-images.txt \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Login to Harbor
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "$HARBOR_PASSWORD" | docker login "$HARBOR_REGISTRY" --username "$HARBOR_USERNAME" --password-stdin
+
+      - name: Verify image digests exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS='=' read -r service image_ref; do
+            echo "Checking $service $image_ref"
+            docker manifest inspect "$image_ref" >/dev/null
+          done < /tmp/staging-images.txt
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Verify staging signatures
+        shell: bash
+        env:
+          SIGNATURE_IDENTITY: https://github.com/${{ github.repository }}/.github/workflows/staging-deploy-dast.yml@refs/heads/staging
+        run: |
+          set -euo pipefail
+          bash scripts/verify-cosign-signature-policy.sh "${{ steps.images.outputs.vote_ref }}" "$SIGNATURE_IDENTITY"
+          bash scripts/verify-cosign-signature-policy.sh "${{ steps.images.outputs.result_ref }}" "$SIGNATURE_IDENTITY"
+          bash scripts/verify-cosign-signature-policy.sh "${{ steps.images.outputs.worker_ref }}" "$SIGNATURE_IDENTITY"
+
+      - name: Trivy rescan vote image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.images.outputs.vote_ref }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Trivy rescan result image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.images.outputs.result_ref }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Trivy rescan worker image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.images.outputs.worker_ref }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Promote digests to production values
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/ci/promote-staging-to-prod.py \
+            --staging k8s/values-staging.yaml \
+            --prod k8s/values-prod.yaml
+          helm template voting-prod k8s \
+            -f k8s/values-openstack.yaml \
+            -f k8s/values-prod.yaml > /tmp/voting-prod-promoted.yaml
+          python scripts/ci/verify-values-digests.py \
+            --base k8s/values-openstack.yaml \
+            --values k8s/values-prod.yaml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add k8s/values-prod.yaml
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: promote staging image digests to production"
+            git push origin HEAD:${{ github.head_ref }}
+          fi

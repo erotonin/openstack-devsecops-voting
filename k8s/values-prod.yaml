@@ -1,0 +1,20 @@
+environment: prod
+
+images:
+  vote:
+    tag: prod
+    digest: ""
+  result:
+    tag: prod
+    digest: ""
+  worker:
+    tag: prod
+    digest: ""
+
+ingress:
+  hosts:
+    vote: vote.openstack.local
+    result: result.openstack.local
+
+podLabels:
+  environment: prod
