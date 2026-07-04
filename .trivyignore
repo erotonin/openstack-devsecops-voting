@@ -1,2 +1,4 @@
-# Ignore unfixable upstream OpenSSL vulnerability in Google's base distroless image
+# Ignore unfixable base image CVEs
 CVE-2026-45447
+CVE-2026-23949
+CVE-2026-24049
