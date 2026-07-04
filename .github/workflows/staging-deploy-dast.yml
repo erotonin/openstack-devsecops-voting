@@ -18,7 +18,7 @@ jobs:
   staging-deploy:
     name: Build, deploy staging, and run DAST
     runs-on: [self-hosted, linux, openstack]
-    if: github.actor != 'github-actions[bot]'
+    if: github.actor != 'github-actions[bot]' && github.event.created != true
     env:
       HARBOR_REGISTRY: ${{ secrets.HARBOR_REGISTRY }}
       HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}

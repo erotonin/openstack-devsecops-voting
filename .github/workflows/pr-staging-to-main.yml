@@ -22,9 +22,11 @@ jobs:
     steps:
       - name: Verify source branch
         shell: bash
+        env:
+          HEAD_REF: ${{ github.head_ref }}
         run: |
           set -euo pipefail
-          if [[ "${{ github.head_ref }}" != "staging" ]]; then
+          if [[ "$HEAD_REF" != "staging" ]]; then
             echo "Only the staging branch may be promoted to main."
             exit 1
           fi
@@ -152,6 +154,8 @@ jobs:
 
       - name: Promote digests to production values
         shell: bash
+        env:
+          HEAD_REF: ${{ github.head_ref }}
         run: |
           set -euo pipefail
           python scripts/ci/promote-staging-to-prod.py \
@@ -168,5 +172,5 @@ jobs:
           git add k8s/values-prod.yaml
           if ! git diff --cached --quiet; then
             git commit -m "chore: promote staging image digests to production"
-            git push origin HEAD:${{ github.head_ref }}
+            git push origin HEAD:"$HEAD_REF"
           fi
