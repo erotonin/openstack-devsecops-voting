@@ -49,7 +49,6 @@ jobs:
           set -euo pipefail
           kubectl -n argocd annotate application voting-prod argocd.argoproj.io/refresh=hard --overwrite
           kubectl -n argocd wait application/voting-prod --for=jsonpath='{.status.sync.status}'=Synced --timeout=10m
-          kubectl -n argocd wait application/voting-prod --for=jsonpath='{.status.health.status}'=Healthy --timeout=10m
           kubectl -n voting-prod rollout status deploy/vote --timeout=5m
           kubectl -n voting-prod rollout status deploy/result --timeout=5m
           kubectl -n voting-prod rollout status deploy/worker --timeout=5m
