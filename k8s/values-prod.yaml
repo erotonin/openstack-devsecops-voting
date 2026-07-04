@@ -2,14 +2,14 @@ environment: prod
 
 images:
   vote:
-    tag: prod
-    digest: ""
+    tag: 54309c8d97ccad9430b536e494dd54db56d3e682
+    digest: sha256:6d7ea8867b0c412524bdb3756e77cef8e754a407d11d4d69f964b66ba790a599
   result:
-    tag: prod
-    digest: ""
+    tag: 54309c8d97ccad9430b536e494dd54db56d3e682
+    digest: sha256:378abc10abf055c29bd653328824aeeab8f3f1521093b104070ab496873693e9
   worker:
-    tag: prod
-    digest: ""
+    tag: 54309c8d97ccad9430b536e494dd54db56d3e682
+    digest: sha256:ce5f46b182d0827a8da7eee0dc87799622a71d1fba39c3c6523011d78f5df4c2
 
 ingress:
   hosts:
