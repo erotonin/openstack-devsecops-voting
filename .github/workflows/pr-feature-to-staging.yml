@@ -122,5 +122,5 @@ jobs:
         run: |
           set -euo pipefail
           for service in vote result worker; do
-            docker build -t "voting-${service}:pr-${GITHUB_SHA}" "./${service}"
+            docker build --network=host -t "voting-${service}:pr-${GITHUB_SHA}" "./${service}"
           done
