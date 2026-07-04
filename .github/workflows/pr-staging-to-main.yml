@@ -118,7 +118,7 @@ jobs:
           set -euo pipefail
           while IFS='=' read -r service image_ref; do
             echo "Checking $service $image_ref"
-            docker manifest inspect "$image_ref" >/dev/null
+            docker pull "$image_ref" >/dev/null
           done < /tmp/staging-images.txt
 
       - name: Install Cosign
