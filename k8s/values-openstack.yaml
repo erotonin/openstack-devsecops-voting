@@ -9,15 +9,8 @@ services:
   result:
     type: ""
 
-imagePullSecrets: []
-
-ingress:
-  enabled: true
-  className: nginx
-  annotations: {}
-  hosts:
-    vote: vote.openstack.local
-    result: result.openstack.local
+imagePullSecrets:
+  - name: harbor-pull
 
 images:
   vote:
@@ -51,6 +44,7 @@ serviceAccounts:
   worker:
     name: worker-sa
     annotations: {}
+
 localDependencies:
   enabled: true
   redis:
@@ -63,6 +57,14 @@ externalSecret:
 
 networkPolicy:
   enabled: true
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+  hosts:
+    vote: vote.openstack.local
+    result: result.openstack.local
 
 storage:
   enabled: true

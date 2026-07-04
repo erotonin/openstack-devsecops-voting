@@ -1,224 +1,176 @@
-# DevSecOps Voting App
+# DevSecOps Voting App on Kubernetes running on OpenStack
 
-This repository is a production-inspired DevSecOps capstone for a small voting application. It combines application code, Terraform infrastructure, Kubernetes GitOps deployment, CI/CD security gates, image signing, admission policy, observability, runtime response, and disaster recovery.
+This repository deploys the Voting App as a cloud-native workload on Kubernetes running on OpenStack private cloud infrastructure. The project is intentionally scoped to a small lab: one control-plane node, one worker node, Harbor on a separate Nova VM, GitOps through ArgoCD, and observability for metrics, logs, and traces.
 
-The current implementation uses AWS as the active primary site and Azure as the warm standby site. AWS and Azure are connected by a route-based IPsec VPN with BGP. The codebase supports PostgreSQL logical replication from AWS RDS to Azure PostgreSQL Flexible Server; in the cost-capped demo, the Azure database standby can be enabled for a DR drill or left as a restore-required placeholder.
-
-## Current Architecture
+## Architecture
 
 ```text
-Developers
-  -> pre-commit hooks
-  -> feature pull request into dev
-  -> light feature security gate
-  -> merge to dev
-  -> integration security gate on combined work
-  -> build images, generate SBOM, push immutable digests
-  -> Cosign keyless sign and verify identity plus crypto policy
-  -> Trivy image scan by digest
-  -> ArgoCD syncs staging from the staging GitOps branch
-  -> smoke test and OWASP ZAP DAST against staging
-  -> promotion PR from tested dev commit into main
-  -> full release gate on final code and production deploy config
-  -> promotion PR updates production Helm values and image digests
-  -> ArgoCD syncs production from main after review
+Developer
+  -> GitHub/GitLab repository
+  -> CI/CD pipeline
+  -> Harbor private registry on a Nova VM
+  -> GitOps desired state in Git
+  -> ArgoCD
+  -> Kubernetes cluster created on OpenStack
+  -> Voting App
+  -> Observability stack
 ```
+
+OpenStack provides the infrastructure layer:
+
+- Keystone: identity, projects, users, roles, and RBAC.
+- Glance: base VM images for Harbor and Kubernetes nodes.
+- Nova: VMs for Harbor and the Kubernetes cluster nodes.
+- Neutron: tenant network, subnet, router, security groups, and floating IPs.
+- Cinder: block volumes for persistent storage.
+- Ceph: storage backend for Cinder and Glance.
+- Magnum: preferred Kubernetes cluster lifecycle path.
+
+Kubernetes provides the application layer:
+
+- Deployments and Pods run `vote`, `result`, `worker`, Redis, and PostgreSQL.
+- Services expose stable in-cluster endpoints.
+- NGINX Ingress routes `vote.openstack.local` and `result.openstack.local`.
+- PostgreSQL uses a PVC backed by the `cinder-csi` StorageClass.
+- Redis remains ephemeral because it is only the demo queue/cache.
+
+## Resource Profile
+
+The target host is a constrained laptop with 32 GB RAM and roughly 400 GB SSD/NVMe storage. The default design is not HA and does not include a second site. The Kubernetes target is:
+
+- 1 master node: 2 vCPU, 4 GB RAM.
+- 1 worker node: 4 vCPU, 8 GB RAM.
+- Calico CNI.
+- Cinder CSI for persistent volumes when available.
+- NGINX Ingress Controller.
+
+## CI/CD
+
+The GitHub Actions workflow runs security and build gates:
+
+- Gitleaks secret scan.
+- Semgrep SAST.
+- Trivy filesystem and image scans.
+- Python compile check for `vote`.
+- npm install/audit for `result`.
+- .NET restore/build for `worker`.
+- Checkov and tfsec for IaC and deployment manifests.
+- Helm lint and render with `k8s/values-openstack.yaml`.
+- Conftest policy scan.
+- Docker build matrix for `vote`, `result`, and `worker`.
+- Syft SBOM generation.
+- Cosign keyless image signing.
+- Push to Harbor.
+
+Expected repository secrets:
+
+- `HARBOR_REGISTRY`
+- `HARBOR_USERNAME`
+- `HARBOR_PASSWORD`
+
+The pipeline updates the GitOps values file with the pushed image tag. ArgoCD syncs desired state from Git; CI does not run `kubectl apply` against the application namespace.
+
+## Harbor
+
+Harbor runs on a separate Nova VM instead of inside Kubernetes. This keeps the registry available before app deployment, avoids a circular dependency, and is simpler for the lab.
+
+Default Harbor VM shape:
+
+- 2 vCPU.
+- 3-4 GB RAM.
+- 20 GB root volume.
+- 50-100 GB Cinder volume mounted at `/data`.
+- Docker and Docker Compose installed by cloud-init.
+
+HTTP registry access is acceptable only for this lab. Configure each Kubernetes node runtime with an insecure registry entry if TLS is not enabled.
+
+## Terraform
+
+Terraform manages OpenStack resources inside an already-running cloud. It does not deploy Kolla-Ansible.
+
+```bash
+terraform -chdir=terraform/openstack init
+terraform -chdir=terraform/openstack fmt
+terraform -chdir=terraform/openstack validate
+terraform -chdir=terraform/openstack plan
+terraform -chdir=terraform/openstack apply
+```
+
+Main resources:
+
+- Neutron tenant network, subnet, router, router interface, and external gateway.
+- Security groups for SSH, Harbor HTTP/HTTPS, Kubernetes API access, NodePort/Ingress lab access, and ICMP troubleshooting.
+- OpenStack keypair.
+- Harbor Nova VM.
+- Cinder volume for Harbor `/data`.
+- Floating IP for Harbor.
+
+Do not commit `clouds.yaml`, OpenStack RC files, kubeconfigs, private keys, Terraform state, or password files.
+
+## Kubernetes Cluster
+
+Use Magnum first. It is OpenStack-native, uses the Magnum API and Heat, and integrates Nova, Neutron, and Cinder for cluster lifecycle. It can be harder to debug when the image, template, or service configuration is wrong.
+
+Kubespray is only the fallback path. It installs Kubernetes on existing VMs with Ansible and gives more direct control over the Kubernetes version, but it requires manual OpenStack cloud provider and Cinder CSI integration.
+
+The exact Magnum CLI flow is in [DEPLOYMENT_NOTES.md](DEPLOYMENT_NOTES.md).
+
+## GitOps Deployment
+
+Create the namespace and Harbor pull secret:
+
+```bash
+kubectl create namespace voting
+kubectl -n voting create secret docker-registry harbor-pull \
+  --docker-server="$HARBOR_REGISTRY" \
+  --docker-username="$HARBOR_USERNAME" \
+  --docker-password="$HARBOR_PASSWORD"
+```
+
+Render locally:
+
+```bash
+helm lint k8s
+helm template voting-app k8s -f k8s/values-openstack.yaml
+```
+
+ArgoCD application manifest:
+
+```bash
+kubectl apply -f k8s/argocd-app-openstack.yaml
+```
+
+## Storage Path
+
+PostgreSQL persistence path:
 
 ```text
-AWS primary site
-  VPC, EKS, ECR, RDS PostgreSQL, ElastiCache Redis, Secrets Manager
-  ArgoCD, External Secrets Operator, Gatekeeper, Sigstore policy-controller
-  Prometheus/Grafana, Loki/Promtail, Falco/Falcosidekick
-
-Azure warm standby site
-  VNet, AKS, ACR, Azure Key Vault, optional Azure PostgreSQL Flexible Server
-  ArgoCD standby controller, External Secrets Operator
-
-Cross-cloud path
-  AWS VPN Gateway <-> Azure Virtual Network Gateway
-  BGP routes carry private traffic between the two networks
-  Optional PostgreSQL logical replication sends WAL deltas from AWS to Azure during a DB standby drill
+Pod -> PVC -> StorageClass cinder-csi -> Cinder Volume -> Ceph backend
 ```
 
-Route53 DNS failover support is implemented in `scripts/configure-route53-failover.ps1`, but it requires a real Route53 hosted zone/domain. The current AWS account has no hosted zone, so public DNS failover is ready as code but not live-configured.
+Redis uses `emptyDir` because it is a demo queue/cache and can be recreated.
 
-On Azure, only the `vote` service is exposed with a public LoadBalancer by default. The `result` service stays `ClusterIP` to avoid the public IP quota limit in student subscriptions; use `kubectl port-forward` for demo access.
+## Observability
 
-## Implemented Security Controls
+The observability layer is split by signal:
 
-| Area | Implementation |
-| --- | --- |
-| Local pre-commit | `.pre-commit-config.yaml` runs YAML hygiene, Gitleaks, Terraform format/validate, and optional local wrappers for Checkov, Hadolint, yamllint, and Semgrep when those CLIs are installed. CI remains the authoritative security gate. |
-| PR security gates | Feature PRs into `dev` run fast feedback checks. Release/promotion PRs into `main` run full SAST, IaC, dependency, Helm render, and policy checks after staging has validated the built artifact. |
-| Build security | Docker build for `vote`, `result`, and `worker`; Syft SPDX SBOM generation; Trivy image scan after signature verification. |
-| Signing | Cosign keyless signing through GitHub Actions OIDC/Fulcio. Images are signed by digest, not mutable tag. CI verifies the certificate identity and rejects weak certificate/signature algorithms before scanning and promotion. |
-| Registry | Images are pushed to AWS ECR and Azure ACR. ECR tags are immutable and scan-on-push is enabled. |
-| GitOps staging | After `dev` build/sign/verify/scan, CI updates the `staging` branch with `k8s/values-staging.yaml`. The AWS ArgoCD staging app tracks that branch and deploys to `voting-staging`. |
-| GitOps production | After staging smoke test and ZAP DAST, CI opens a promotion PR from the tested `dev` commit into `main`, updating `k8s/values-prod.yaml` and `k8s/values-azure.yaml`. The AWS and Azure production ArgoCD apps deploy only after that PR is reviewed and merged. |
-| Admission policy | Gatekeeper rejects unsafe Kubernetes manifests. AWS EKS enforces signed ECR images with Sigstore policy-controller. |
-| Secrets | External Secrets Operator syncs AWS Secrets Manager and Azure Key Vault into Kubernetes. Secrets are not committed in Helm values. |
-| Runtime security | Falco detects suspicious runtime behavior and can open a GitHub incident workflow. Quarantine is a manual approval workflow. |
-| Observability | kube-prometheus-stack, Grafana SLI/SLO dashboard, Loki, Promtail, and PrometheusRule resources. |
-| DR | Azure warm standby, ArgoCD sync, optional PostgreSQL logical replication or restore-required DB placeholder, and Route53 failover script when a hosted zone exists. |
+- Metrics: Prometheus and Grafana.
+- Logs: Loki and Promtail.
+- Traces: OpenTelemetry Collector and Jaeger.
 
-## Repository Structure
+The vote service supports OpenTelemetry through environment variables:
 
-```text
-.github/workflows/        GitHub Actions pipelines and runtime response workflows
-docs/                     Demo guides, evidence checklist, scope and presentation notes
-healthchecks/             Container health check helpers
-k8s/                      Helm chart, values files, and ArgoCD application manifests
-observability/            Grafana dashboard JSON
-policies/                 Gatekeeper, Conftest, and Sigstore policy definitions
-response/                 Quarantine NetworkPolicy for incident response
-result/                   Node.js result service
-runbooks/                 Apply/destroy, rollback, DR, DNS, and replication runbooks
-scripts/                  PowerShell automation for infra, GitHub, DR, SSO, and verification
-seed-data/                Demo data generation helpers
-terraform/                AWS/Azure Terraform environments and reusable modules
-tests/policy/             Admission-policy negative test fixtures
-vote/                     Python vote service
-worker/                   .NET worker service
-```
+- `OTEL_SERVICE_NAME=vote`
+- `OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317`
 
-Personal lecture notes are intentionally ignored through `.gitignore` (`BaiGiang/`, `Mentor/`, `lectures/`, `notes/`) because they are not needed for the runnable project.
+Operational flow: a Prometheus alert points to latency or errors, traces show the slow service path, and logs provide the request-level error context when available.
 
-## Prerequisites
+## Policy
 
-- PowerShell 7+
-- Git
-- GitHub CLI authenticated with `repo` and `workflow` scope
-- AWS CLI authenticated to account `800557027783`
-- Azure CLI authenticated to subscription `007e5e26-e0d0-4389-9cde-5731cdb86639`
-- Terraform
-- kubectl
-- Helm
-- Docker, for local image testing
-- Python with `pre-commit`
+Generic Kubernetes security policies are kept:
 
-Install and enable pre-commit:
-
-```powershell
-pip install pre-commit
-pre-commit install
-pre-commit run --all-files
-```
-
-On Windows, the local Semgrep, Checkov, Hadolint, and yamllint hooks use wrapper scripts under `scripts/`. If a CLI is not installed locally, the hook prints a skip message instead of blocking commits. GitHub Actions still runs the real security gates on Linux.
-
-## Deploy
-
-The main apply wrapper stages Terraform so resources that depend on remote-state outputs and Kubernetes CRDs are created in the right order.
-
-```powershell
-.\scripts\infra-up.ps1 -AutoApprove
-```
-
-After apply, configure GitHub repository variables/secrets from Terraform outputs:
-
-```powershell
-.\scripts\configure-github-repo.ps1 `
-  -StagingUrl "<AWS vote LoadBalancer URL>" `
-  -ConfigureBranchProtection
-```
-
-Apply or verify admission policies:
-
-```powershell
-.\scripts\apply-gatekeeper-policies.ps1
-.\scripts\apply-sigstore-policy.ps1 -Apply
-```
-
-The Sigstore policy is applied to `voting-staging` and `voting-production`. The CI signing sequence is intentionally digest-based:
-
-```text
-build image -> push registry -> resolve digest -> cosign sign digest -> cosign verify identity and crypto policy -> trivy scan digest
-```
-
-Cosign verifies signature identity and certificate metadata. Trivy scans vulnerabilities; it does not verify signatures.
-
-Configure PostgreSQL logical replication when the cloud databases are up:
-
-```powershell
-.\scripts\setup-postgres-logical-replication.ps1
-```
-
-## Verify
-
-Run the general stack verifier:
-
-```powershell
-.\scripts\verify-stack.ps1
-```
-
-Quick AWS app health:
-
-```powershell
-$vote = kubectl --context arn:aws:eks:us-east-1:800557027783:cluster/voting-app-cluster `
-  -n voting-staging get svc vote -o jsonpath="{.status.loadBalancer.ingress[0].hostname}"
-Invoke-WebRequest -UseBasicParsing "http://$vote/healthz"
-```
-
-Expected result: HTTP `200` and a JSON body showing `status: ok`.
-
-Check ArgoCD:
-
-```powershell
-kubectl --context arn:aws:eks:us-east-1:800557027783:cluster/voting-app-cluster `
-  -n argocd get application voting-staging voting-production
-
-kubectl --context devsecops-voting-aks `
-  -n argocd get application voting-azure
-```
-
-Expected result: AWS staging and production should be `Synced Healthy`; Azure production should be healthy after the warm-standby sync succeeds.
-
-## Demo Entry Points
-
-Use the verified demo runbook:
-
-```text
-docs/teacher-aligned-demo-runbook.md
-docs/devsecops-phase-model.md
-docs/teacher-aligned-architecture.md
-docs/architecture-conceptual.md
-docs/devsecops-pipeline-diagram.md
-docs/pipeline-frameworks.md
-docs/demo-checklist.md
-```
-
-Useful scripts:
-
-```powershell
-.\scripts\test-policy-rejects.ps1 -Context arn:aws:eks:us-east-1:800557027783:cluster/voting-app-cluster
-.\scripts\open-argocd.ps1
-.\scripts\open-grafana.ps1
-.\scripts\run-production-approval.ps1
-.\scripts\dr-failover.ps1 -SkipScale
-```
-
-## Cleanup
-
-Destroy the full demo to avoid cost:
-
-```powershell
-.\destroy.ps1 -AutoApprove
-```
-
-Then check for expensive leftovers:
-
-```powershell
-aws eks list-clusters --region us-east-1
-aws rds describe-db-instances --region us-east-1 --query "DBInstances[].DBInstanceIdentifier"
-aws elasticache describe-replication-groups --region us-east-1 --query "ReplicationGroups[].ReplicationGroupId"
-az aks list -o table
-az network vnet-gateway list -o table
-```
-
-## Known Cost-Aware Decisions
-
-- Azure ACR uses Basic SKU. Premium-only controls such as private endpoints, geo-replication, image quarantine, and Defender integration are documented as production hardening items.
-- Azure image verification with Kyverno is disabled by default because Kyverno cannot verify private ACR manifests without extra registry credentials. AWS EKS remains the enforced signed-image admission path through Sigstore policy-controller.
-- Azure warm standby uses an in-cluster Redis service to avoid extra managed Redis cost. PostgreSQL standby is optional in the cost-capped demo; when disabled, Azure runtime secrets intentionally point at a restore-required database host.
-- Route53 failover requires a real hosted zone. The script exists, but no hosted zone is currently present in the AWS account.
-- GitHub branch protection is configured, but repository owners/admins can still bypass unless admin bypass is explicitly disabled in GitHub rulesets.
+- No mutable `latest` image tags.
+- No privileged containers.
+- Resource requests and limits are required.
+- Pods must run as non-root where possible.
+- Containers must set `allowPrivilegeEscalation=false`.

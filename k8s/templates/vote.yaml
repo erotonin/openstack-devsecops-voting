@@ -20,6 +20,10 @@ spec:
         app: vote
     spec:
       serviceAccountName: {{ .Values.serviceAccounts.vote.name }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml . | indent 8 }}
+      {{- end }}
       securityContext:
         runAsNonRoot: true
         seccompProfile:
@@ -41,6 +45,15 @@ spec:
         envFrom:
         - secretRef:
             name: {{ .Values.appSecretName }}
+        env:
+        {{- if .Values.otel.enabled }}
+        - name: OTEL_SERVICE_NAME
+          value: vote
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: {{ .Values.otel.endpoint | quote }}
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: {{ .Values.otel.insecure | quote }}
+        {{- end }}
         ports:
         - containerPort: 8080
           name: http
@@ -82,17 +95,6 @@ spec:
     name: http
   selector:
     app: vote
----
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: vote
-spec:
-  minAvailable: 1
-  selector:
-    matchLabels:
-      app: vote
-
 {{- if .Values.autoscaling.enabled }}
 ---
 apiVersion: autoscaling/v2

@@ -3,42 +3,27 @@ name: DevSecOps CI/CD
 on:
   pull_request:
     branches:
-      - dev
       - main
+      - dev
   push:
     branches:
-      - dev
       - main
+      - dev
   workflow_dispatch:
-    inputs:
-      promote_production:
-        description: "Record a human production approval for the already-staged release"
-        required: true
-        default: "false"
-        type: choice
-        options:
-          - "false"
-          - "true"
 
 permissions:
   contents: write
   id-token: write
   security-events: write
-  actions: write
   pull-requests: write
-  issues: write
 
 env:
-  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
-  ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
   IMAGE_TAG: ${{ github.sha }}
-  STAGING_BRANCH: staging
 
 jobs:
-  feature-pr-light-scan:
-    name: Feature PR light security gates
+  pr-gate:
+    name: Security and render gates
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && github.base_ref == 'dev'
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
@@ -55,7 +40,7 @@ jobs:
         with:
           config: auto
 
-      - name: Trivy filesystem dependency scan
+      - name: Trivy filesystem and dependency scan
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
           scan-type: fs
@@ -64,7 +49,7 @@ jobs:
           ignore-unfixed: true
           exit-code: "1"
 
-      - name: Fast application sanity checks
+      - name: Application sanity checks
         shell: bash
         run: |
           set -euo pipefail
@@ -74,212 +59,58 @@ jobs:
           dotnet restore worker/Worker.csproj
           dotnet build worker/Worker.csproj --configuration Release --no-restore
 
-  dev-integration-security-scan:
-    name: Dev integration security gates
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-        with:
-          fetch-depth: 0
-
-      - name: Gitleaks full secret scan
-        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-
-      - name: Semgrep SAST
-        uses: semgrep/semgrep-action@713efdd345f3035192eaa63f56867b88e63e4e5d
-        with:
-          config: auto
-
-      - name: Checkov IaC and workflow scan
+      - name: Checkov IaC and manifest scan
         uses: bridgecrewio/checkov-action@4048c972aae68d0b983a48bb3479aab2d877b898
         with:
           directory: .
           framework: terraform,kubernetes,dockerfile,github_actions
           quiet: true
           skip_path: tests/policy
-          skip_check: CKV_GHA_7,CKV_AWS_130,CKV_AWS_136,CKV_AWS_161,CKV_AWS_23,CKV_AWS_260,CKV_AWS_338,CKV_AWS_341,CKV_AWS_38,CKV_AWS_382,CKV_AWS_39,CKV_AZURE_109,CKV_AZURE_110,CKV_AZURE_114,CKV_AZURE_115,CKV_AZURE_117,CKV_AZURE_136,CKV_AZURE_139,CKV_AZURE_141,CKV_AZURE_160,CKV_AZURE_163,CKV_AZURE_164,CKV_AZURE_165,CKV_AZURE_166,CKV_AZURE_167,CKV_AZURE_168,CKV_AZURE_170,CKV_AZURE_171,CKV_AZURE_172,CKV_AZURE_189,CKV_AZURE_226,CKV_AZURE_227,CKV_AZURE_232,CKV_AZURE_233,CKV_AZURE_237,CKV_AZURE_41,CKV_AZURE_42,CKV_AZURE_6,CKV2_AWS_12,CKV2_AWS_5,CKV2_AWS_50,CKV2_AWS_57,CKV2_AWS_64,CKV2_AZURE_31,CKV2_AZURE_32,CKV2_AZURE_57
+          skip_check: CKV_GHA_7
           soft_fail: false
 
       - name: tfsec Terraform scan
         uses: aquasecurity/tfsec-action@b466648d6e39e7c75324f25d83891162a721f2d6
         with:
-          working_directory: terraform
+          working_directory: terraform/openstack
           version: v1.28.14
           github_token: ${{ github.token }}
           soft_fail: false
 
-      - name: Trivy filesystem dependency scan
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
-        with:
-          scan-type: fs
-          scan-ref: .
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
-          exit-code: "1"
-
-      - name: Helm render validation
-        run: |
-          helm lint k8s
-          helm template voting-app k8s -f k8s/values-staging.yaml >/tmp/voting-staging.yaml
-          helm template voting-app k8s -f k8s/values-prod.yaml >/tmp/voting-prod.yaml
-          helm template voting-app k8s -f k8s/values-azure.yaml >/tmp/voting-azure.yaml
-
-      - name: Install Conftest
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          rm -f conftest conftest_0.56.0_Linux_x86_64.tar.gz
-          gh release download v0.56.0 \
-            --repo open-policy-agent/conftest \
-            --pattern conftest_0.56.0_Linux_x86_64.tar.gz
-          tar xzf conftest_0.56.0_Linux_x86_64.tar.gz
-          sudo mv conftest /usr/local/bin/conftest
-
-      - name: Conftest Kubernetes policy scan
-        run: |
-          conftest test --policy policies/conftest /tmp/voting-staging.yaml
-          conftest test --policy policies/conftest /tmp/voting-prod.yaml
-          conftest test --policy policies/conftest /tmp/voting-azure.yaml
-
-  release-pr-security-scan:
-    name: Release PR full security gates
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && github.base_ref == 'main'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-        with:
-          fetch-depth: 0
-
-      - name: Gitleaks full secret scan
-        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-
-      - name: Semgrep SAST
-        uses: semgrep/semgrep-action@713efdd345f3035192eaa63f56867b88e63e4e5d
-        with:
-          config: auto
-
-      - name: Checkov IaC and workflow scan
-        uses: bridgecrewio/checkov-action@4048c972aae68d0b983a48bb3479aab2d877b898
-        with:
-          directory: .
-          framework: terraform,kubernetes,dockerfile,github_actions
-          quiet: true
-          skip_path: tests/policy
-          skip_check: CKV_GHA_7,CKV_AWS_130,CKV_AWS_136,CKV_AWS_161,CKV_AWS_23,CKV_AWS_260,CKV_AWS_338,CKV_AWS_341,CKV_AWS_38,CKV_AWS_382,CKV_AWS_39,CKV_AZURE_109,CKV_AZURE_110,CKV_AZURE_114,CKV_AZURE_115,CKV_AZURE_117,CKV_AZURE_136,CKV_AZURE_139,CKV_AZURE_141,CKV_AZURE_160,CKV_AZURE_163,CKV_AZURE_164,CKV_AZURE_165,CKV_AZURE_166,CKV_AZURE_167,CKV_AZURE_168,CKV_AZURE_170,CKV_AZURE_171,CKV_AZURE_172,CKV_AZURE_189,CKV_AZURE_226,CKV_AZURE_227,CKV_AZURE_232,CKV_AZURE_233,CKV_AZURE_237,CKV_AZURE_41,CKV_AZURE_42,CKV_AZURE_6,CKV2_AWS_12,CKV2_AWS_5,CKV2_AWS_50,CKV2_AWS_57,CKV2_AWS_64,CKV2_AZURE_31,CKV2_AZURE_32,CKV2_AZURE_57
-          soft_fail: false
-
-      - name: tfsec Terraform scan
-        uses: aquasecurity/tfsec-action@b466648d6e39e7c75324f25d83891162a721f2d6
-        with:
-          working_directory: terraform
-          version: v1.28.14
-          github_token: ${{ github.token }}
-          soft_fail: false
-
-      - name: Trivy filesystem dependency scan
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
-        with:
-          scan-type: fs
-          scan-ref: .
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
-          exit-code: "1"
-
-      - name: Helm render validation
-        run: |
-          helm lint k8s
-          helm template voting-app k8s -f k8s/values-staging.yaml >/tmp/voting-staging.yaml
-          helm template voting-app k8s -f k8s/values-prod.yaml >/tmp/voting-prod.yaml
-          helm template voting-app k8s -f k8s/values-azure.yaml >/tmp/voting-azure.yaml
-
-      - name: Install Conftest
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          rm -f conftest conftest_0.56.0_Linux_x86_64.tar.gz
-          gh release download v0.56.0 \
-            --repo open-policy-agent/conftest \
-            --pattern conftest_0.56.0_Linux_x86_64.tar.gz
-          tar xzf conftest_0.56.0_Linux_x86_64.tar.gz
-          sudo mv conftest /usr/local/bin/conftest
-
-      - name: Conftest Kubernetes policy scan
-        run: |
-          conftest test --policy policies/conftest /tmp/voting-staging.yaml
-          conftest test --policy policies/conftest /tmp/voting-prod.yaml
-          conftest test --policy policies/conftest /tmp/voting-azure.yaml
-
-  create-issue-on-failure:
-    name: Create issue on security failure
-    runs-on: ubuntu-latest
-    needs:
-      - feature-pr-light-scan
-      - dev-integration-security-scan
-      - release-pr-security-scan
-    if: always() && github.event_name == 'pull_request' && (needs.feature-pr-light-scan.result == 'failure' || needs.release-pr-security-scan.result == 'failure')
-    permissions:
-      issues: write
-      pull-requests: read
-    steps:
-      - name: Create Issue
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
-        with:
-          script: |
-            const issueTitle = `Security gate failed for PR #${context.issue.number}`;
-            const issueBody = [
-              `Security checks failed for PR #${context.issue.number}.`,
-              ``,
-              `PR: ${context.payload.pull_request.html_url}`,
-              `Workflow run: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
-              ``,
-              `Owner action: open the failed job, inspect annotations, fix the finding, and push a new commit to the same branch.`
-            ].join('\n');
-
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: issueTitle,
-              body: issueBody,
-              labels: ['incident', 'security', 'ci-failure']
-            });
-
-  classify-main-push:
-    name: Classify main push
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    steps:
-      - name: Checkout release source
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-        with:
-          fetch-depth: 2
-
-      - name: Classify production desired-state update
+      - name: Terraform format and validate
         shell: bash
         run: |
           set -euo pipefail
-          changed="$(git diff --name-only HEAD^1 HEAD || true)"
-          non_gitops="$(printf '%s\n' "$changed" | grep -Ev '^(k8s/values-staging.yaml|k8s/values-prod.yaml|k8s/values-azure.yaml)$' || true)"
+          terraform -chdir=terraform/openstack init -backend=false
+          terraform -chdir=terraform/openstack fmt -check
+          terraform -chdir=terraform/openstack validate
 
-          if [[ -z "$non_gitops" ]]; then
-            echo "Main push only changed GitOps values; production ArgoCD will sync the promoted image without rebuilding."
-            exit 0
-          fi
+      - name: Helm render validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          helm lint k8s
+          helm template voting-app k8s -f k8s/values-openstack.yaml > /tmp/voting-openstack.yaml
 
-          echo "Main source/config changed after a reviewed release PR."
-          echo "Image build, signing, staging deployment, and DAST are performed from dev before promotion."
+      - name: Install Conftest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          rm -f conftest conftest_0.56.0_Linux_x86_64.tar.gz
+          gh release download v0.56.0 \
+            --repo open-policy-agent/conftest \
+            --pattern conftest_0.56.0_Linux_x86_64.tar.gz
+          tar xzf conftest_0.56.0_Linux_x86_64.tar.gz
+          sudo mv conftest /usr/local/bin/conftest
 
-  build-sign-verify-scan:
-    name: Build, sign, verify, and scan image
+      - name: Conftest Kubernetes policy scan
+        run: conftest test --policy policies/conftest /tmp/voting-openstack.yaml
+
+  build-image:
+    name: Build, sign, scan, and push images
     runs-on: ubuntu-latest
-    needs: dev-integration-security-scan
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    needs: pr-gate
+    if: github.event_name == 'push'
     strategy:
       fail-fast: false
       matrix:
@@ -288,62 +119,54 @@ jobs:
           - result
           - worker
     steps:
-      - name: Checkout release source
+      - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
-      - name: Configure AWS credentials with OIDC
-        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+      - name: Validate Harbor settings
+        shell: bash
+        env:
+          HARBOR_REGISTRY: ${{ secrets.HARBOR_REGISTRY }}
+          HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
+          HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$HARBOR_REGISTRY"
+          test -n "$HARBOR_USERNAME"
+          test -n "$HARBOR_PASSWORD"
 
-      - name: Login to Amazon ECR
-        id: ecr
-        uses: aws-actions/amazon-ecr-login@fa648b43de3d4d023bcb3f89ed6940096949c419
-
-      - name: Azure login with OIDC
-        if: env.ACR_LOGIN_SERVER != ''
-        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Login to Azure ACR
-        if: env.ACR_LOGIN_SERVER != ''
-        run: az acr login --name "${ACR_LOGIN_SERVER%%.azurecr.io}"
+      - name: Login to Harbor
+        shell: bash
+        env:
+          HARBOR_REGISTRY: ${{ secrets.HARBOR_REGISTRY }}
+          HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
+          HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
+        run: echo "$HARBOR_PASSWORD" | docker login "$HARBOR_REGISTRY" --username "$HARBOR_USERNAME" --password-stdin
 
       - name: Build image
+        id: image
+        shell: bash
+        env:
+          HARBOR_REGISTRY: ${{ secrets.HARBOR_REGISTRY }}
         run: |
-          docker build \
-            -t "${{ matrix.service }}:${IMAGE_TAG}" \
-            "./${{ matrix.service }}"
+          set -euo pipefail
+          image="${HARBOR_REGISTRY}/voting/${{ matrix.service }}:${IMAGE_TAG}"
+          docker build -t "$image" "./${{ matrix.service }}"
+          echo "ref=$image" >> "$GITHUB_OUTPUT"
 
       - name: Install Syft
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -euo pipefail
-          for attempt in 1 2 3; do
-            echo "Installing Syft (attempt ${attempt}/3)"
-            rm -f /tmp/syft /tmp/syft_1.42.3_linux_amd64.tar.gz
-            if gh release download v1.42.3 \
-                --repo anchore/syft \
-                --pattern syft_1.42.3_linux_amd64.tar.gz \
-                --dir /tmp; then
-              tar xzf /tmp/syft_1.42.3_linux_amd64.tar.gz -C /tmp syft
-              sudo mv /tmp/syft /usr/local/bin/syft
-              syft version
-              exit 0
-            fi
-            sleep $((attempt * 10))
-          done
-          echo "Failed to install Syft after retries"
-          exit 1
+          rm -f /tmp/syft /tmp/syft_1.42.3_linux_amd64.tar.gz
+          gh release download v1.42.3 \
+            --repo anchore/syft \
+            --pattern syft_1.42.3_linux_amd64.tar.gz \
+            --dir /tmp
+          tar xzf /tmp/syft_1.42.3_linux_amd64.tar.gz -C /tmp syft
+          sudo mv /tmp/syft /usr/local/bin/syft
 
-      - name: Generate SBOM from local build artifact
-        run: |
-          syft "${{ matrix.service }}:${IMAGE_TAG}" -o spdx-json=sbom-${{ matrix.service }}.spdx.json
+      - name: Generate SBOM
+        run: syft "${{ steps.image.outputs.ref }}" -o spdx-json=sbom-${{ matrix.service }}.spdx.json
 
       - name: Upload SBOM
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -351,292 +174,101 @@ jobs:
           name: sbom-${{ matrix.service }}
           path: sbom-${{ matrix.service }}.spdx.json
 
-      - name: Tag image for ECR
-        env:
-          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+      - name: Push image
+        id: push
+        shell: bash
         run: |
-          docker tag "${{ matrix.service }}:${IMAGE_TAG}" "${ECR_REGISTRY}/voting-app-${{ matrix.service }}:${IMAGE_TAG}"
-
-      - name: Tag image for ACR
-        if: env.ACR_LOGIN_SERVER != ''
-        run: |
-          docker tag "${{ matrix.service }}:${IMAGE_TAG}" "${ACR_LOGIN_SERVER}/voting-app-${{ matrix.service }}:${IMAGE_TAG}"
+          set -euo pipefail
+          docker push "${{ steps.image.outputs.ref }}"
+          digest="$(docker inspect --format='{{index .RepoDigests 0}}' "${{ steps.image.outputs.ref }}")"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac
 
-      - name: Push ECR image and resolve digest
-        id: push_ecr
+      - name: Sign image digest
+        run: cosign sign --yes "${{ steps.push.outputs.digest }}"
+
+      - name: Verify signature identity and crypto policy
         env:
-          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
-        run: |
-          image="${ECR_REGISTRY}/voting-app-${{ matrix.service }}:${IMAGE_TAG}"
-          docker push "$image"
-          digest="$(docker inspect --format='{{index .RepoDigests 0}}' "$image" | cut -d'@' -f2)"
-          echo "image_digest=${ECR_REGISTRY}/voting-app-${{ matrix.service }}@${digest}" >> "$GITHUB_OUTPUT"
-
-      - name: Push ACR image and resolve digest
-        id: push_acr
-        if: env.ACR_LOGIN_SERVER != ''
-        run: |
-          image="${ACR_LOGIN_SERVER}/voting-app-${{ matrix.service }}:${IMAGE_TAG}"
-          docker push "$image"
-          digest="$(docker inspect --format='{{index .RepoDigests 0}}' "$image" | cut -d'@' -f2)"
-          echo "image_digest=${ACR_LOGIN_SERVER}/voting-app-${{ matrix.service }}@${digest}" >> "$GITHUB_OUTPUT"
-
-      - name: Cosign keyless sign ECR digest
-        run: cosign sign --yes "${{ steps.push_ecr.outputs.image_digest }}"
-
-      - name: Cosign keyless sign ACR digest
-        if: env.ACR_LOGIN_SERVER != ''
-        run: cosign sign --yes "${{ steps.push_acr.outputs.image_digest }}"
-
-      - name: Verify ECR signature identity and crypto policy
-        env:
-          IMAGE_DIGEST: ${{ steps.push_ecr.outputs.image_digest }}
+          IMAGE_DIGEST: ${{ steps.push.outputs.digest }}
           SIGNATURE_IDENTITY: https://github.com/${{ github.repository }}/.github/workflows/ci-pipeline.yml@${{ github.ref }}
         run: |
           bash scripts/verify-cosign-signature-policy.sh \
             "$IMAGE_DIGEST" \
             "$SIGNATURE_IDENTITY"
 
-      - name: Verify ACR signature identity and crypto policy
-        if: env.ACR_LOGIN_SERVER != ''
-        env:
-          IMAGE_DIGEST: ${{ steps.push_acr.outputs.image_digest }}
-          SIGNATURE_IDENTITY: https://github.com/${{ github.repository }}/.github/workflows/ci-pipeline.yml@${{ github.ref }}
-        run: |
-          bash scripts/verify-cosign-signature-policy.sh \
-            "$IMAGE_DIGEST" \
-            "$SIGNATURE_IDENTITY"
-
-      - name: Trivy image scan after signature verification
+      - name: Trivy image scan
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
-          image-ref: ${{ steps.push_ecr.outputs.image_digest }}
+          image-ref: ${{ steps.push.outputs.digest }}
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: "1"
 
-  deploy-staging-gitops:
-    name: Deploy staging through ArgoCD GitOps
+  update-gitops:
+    name: Update GitOps image tags
     runs-on: ubuntu-latest
-    needs: build-sign-verify-scan
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    needs: build-image
+    if: github.event_name == 'push' && github.actor != 'github-actions[bot]'
     steps:
-      - name: Checkout release source
+      - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-        with:
-          fetch-depth: 0
 
-      - name: Configure AWS credentials with OIDC
-        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to Amazon ECR
-        id: ecr
-        uses: aws-actions/amazon-ecr-login@fa648b43de3d4d023bcb3f89ed6940096949c419
-
-      - name: Azure login with OIDC
-        if: env.ACR_LOGIN_SERVER != ''
-        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Update staging GitOps branch
-        shell: pwsh
+      - name: Update values-openstack image tags
+        shell: bash
         run: |
-          ./scripts/update-gitops-image-tags.ps1 `
-            -ImageTag "${env:IMAGE_TAG}" `
-            -EcrRegistry "${{ steps.ecr.outputs.registry }}" `
-            -AcrLoginServer "${env:ACR_LOGIN_SERVER}" `
-            -AwsValuesPath "k8s/values-staging.yaml" `
-            -AzureValuesPath "k8s/values-azure.yaml" `
-            -ResolveDigests
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          from pathlib import Path
 
-      - name: Push staging environment desired state
+          path = Path("k8s/values-openstack.yaml")
+          tag = os.environ["IMAGE_TAG"]
+          services = {"vote", "result", "worker"}
+          current = []
+          output = []
+
+          for line in path.read_text().splitlines():
+              stripped = line.strip()
+              if stripped == "images:":
+                  current = ["images"]
+              elif current and line.startswith("  ") and not line.startswith("    ") and stripped.endswith(":"):
+                  name = stripped[:-1]
+                  current = ["images", name] if name in services else []
+              elif current and len(current) == 2 and stripped.startswith("tag:"):
+                  indent = line[: len(line) - len(line.lstrip())]
+                  line = f"{indent}tag: {tag}"
+              output.append(line)
+
+          path.write_text("\n".join(output) + "\n")
+          PY
+
+      - name: Commit desired state update
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -B "${STAGING_BRANCH}"
-          git add k8s/values-staging.yaml k8s/values-azure.yaml
+          git add k8s/values-openstack.yaml
           if git diff --cached --quiet; then
-            echo "Staging GitOps branch already points at ${IMAGE_TAG}."
+            echo "values-openstack.yaml already uses ${IMAGE_TAG}."
             exit 0
           fi
-          git commit -m "chore: deploy ${IMAGE_TAG} to staging"
-          git push --force-with-lease origin "HEAD:${STAGING_BRANCH}"
+          git commit -m "chore: update OpenStack image tags ${IMAGE_TAG}"
+          git push
 
-  dast-staging:
-    name: DAST staging smoke and baseline scan
+  dast:
+    name: Optional ZAP DAST
     runs-on: ubuntu-latest
-    needs: deploy-staging-gitops
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    needs: update-gitops
+    if: github.event_name == 'push' && vars.STAGING_URL != ''
     steps:
-      - name: Require staging URL
-        if: vars.STAGING_URL == ''
-        run: |
-          echo "STAGING_URL repository variable is required for the smoke test and OWASP ZAP DAST gate."
-          echo "Run scripts/configure-github-repo.ps1 after voting-staging/vote has a LoadBalancer endpoint."
-          exit 1
-
-      - name: Smoke test staging endpoint
-        if: vars.STAGING_URL != ''
-        run: |
-          health_url="${{ vars.STAGING_URL }}/healthz"
-          for attempt in $(seq 1 48); do
-            status="$(curl -ks -o /dev/null -w '%{http_code}' "$health_url" || true)"
-            if [[ "$status" == "200" ]]; then
-              echo "Staging endpoint is healthy: $health_url"
-              exit 0
-            fi
-            echo "Waiting for staging endpoint ($attempt/48), last status: $status"
-            sleep 10
-          done
-          echo "Staging endpoint did not become healthy: $health_url"
-          exit 1
-
       - name: OWASP ZAP baseline
-        if: vars.STAGING_URL != ''
         uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25
         with:
           target: ${{ vars.STAGING_URL }}
           fail_action: true
           cmd_options: -I
           allow_issue_writing: false
-          artifact_name: zap-staging-report
-
-  open-gitops-promotion-pr:
-    name: Open GitOps promotion PR
-    runs-on: ubuntu-latest
-    needs:
-      - build-sign-verify-scan
-      - dast-staging
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-        with:
-          fetch-depth: 0
-
-      - name: Check whether promotion is needed
-        id: promote
-        shell: bash
-        run: |
-          message="$(git log -1 --pretty=%s)"
-          changed="$(git diff --name-only HEAD^1 HEAD || true)"
-
-          if [[ "$message" == chore:\ promote\ staged\ images* ]]; then
-            echo "should_promote=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          non_gitops="$(printf '%s\n' "$changed" | grep -Ev '^(k8s/values-staging.yaml|k8s/values-prod.yaml|k8s/values-azure.yaml)$' || true)"
-          if [[ -z "$non_gitops" ]]; then
-            echo "should_promote=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          echo "should_promote=true" >> "$GITHUB_OUTPUT"
-
-      - name: Configure AWS credentials with OIDC
-        if: steps.promote.outputs.should_promote == 'true'
-        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to Amazon ECR
-        if: steps.promote.outputs.should_promote == 'true'
-        id: ecr
-        uses: aws-actions/amazon-ecr-login@fa648b43de3d4d023bcb3f89ed6940096949c419
-
-      - name: Azure login with OIDC
-        if: steps.promote.outputs.should_promote == 'true' && env.ACR_LOGIN_SERVER != ''
-        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Prepare promotion branch from tested dev commit
-        if: steps.promote.outputs.should_promote == 'true'
-        env:
-          PROMOTION_BRANCH: "promote/images-${{ github.sha }}"
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch origin main
-          git checkout -B "$PROMOTION_BRANCH" "$GITHUB_SHA"
-          git merge --no-edit -X ours origin/main
-
-      - name: Update GitOps image tags
-        if: steps.promote.outputs.should_promote == 'true'
-        shell: pwsh
-        run: |
-          ./scripts/update-gitops-image-tags.ps1 `
-            -ImageTag "${env:IMAGE_TAG}" `
-            -EcrRegistry "${{ steps.ecr.outputs.registry }}" `
-            -AcrLoginServer "${env:ACR_LOGIN_SERVER}" `
-            -ResolveDigests
-
-      - name: Create promotion pull request
-        if: steps.promote.outputs.should_promote == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.ACTIONS_PR_TOKEN || github.token }}
-          PROMOTION_BRANCH: "promote/images-${{ github.sha }}"
-          PROMOTION_TITLE: "chore: promote staged images for ${{ github.sha }}"
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git add k8s/values-prod.yaml k8s/values-azure.yaml
-          if ! git diff --cached --quiet; then
-            git commit -m "$PROMOTION_TITLE"
-          fi
-          git push --force-with-lease origin "HEAD:$PROMOTION_BRANCH"
-
-          cat > /tmp/promotion-pr-body.md <<'BODY'
-          Promote signed images built from the tested dev commit.
-
-          This release PR carries the tested source changes plus the production GitOps values that pin the exact image digests verified in staging.
-          Merge it after reviewing the successful dev build, signature verification, image scan, SBOM, staging deploy, and DAST jobs.
-          BODY
-
-          if gh pr view "$PROMOTION_BRANCH" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh pr edit "$PROMOTION_BRANCH" \
-              --repo "$GITHUB_REPOSITORY" \
-              --title "$PROMOTION_TITLE" \
-              --body-file /tmp/promotion-pr-body.md
-          else
-            gh pr create \
-              --repo "$GITHUB_REPOSITORY" \
-              --base main \
-              --head "$PROMOTION_BRANCH" \
-              --title "$PROMOTION_TITLE" \
-              --body-file /tmp/promotion-pr-body.md
-          fi
-
-  production-approval:
-    name: Production approval gate
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && inputs.promote_production == 'true'
-    environment:
-      name: production
-    steps:
-      - name: Approved production promotion
-        run: |
-          echo "Production promotion approved for commit ${GITHUB_SHA}."
-          echo "This job is the human approval boundary."
-          echo "Production should promote a previously signed dev image digest, not rebuild or deploy from a direct main push."
-          echo "ArgoCD production sync is intentionally performed by GitOps, not by committing from CI."
+          artifact_name: zap-openstack-report

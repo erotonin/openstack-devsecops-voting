@@ -22,6 +22,10 @@ spec:
         app: worker
     spec:
       serviceAccountName: {{ .Values.serviceAccounts.worker.name }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml . | indent 8 }}
+      {{- end }}
       securityContext:
         runAsNonRoot: true
         seccompProfile:
@@ -40,6 +44,15 @@ spec:
         envFrom:
         - secretRef:
             name: {{ .Values.appSecretName }}
+        env:
+        {{- if .Values.otel.enabled }}
+        - name: OTEL_SERVICE_NAME
+          value: worker
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: {{ .Values.otel.endpoint | quote }}
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: {{ .Values.otel.insecure | quote }}
+        {{- end }}
         resources:
 {{ toYaml .Values.resources.worker | indent 10 }}
         securityContext:
@@ -47,17 +60,6 @@ spec:
           capabilities:
             drop:
             - ALL
----
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: worker
-spec:
-  minAvailable: 1
-  selector:
-    matchLabels:
-      app: worker
-
 {{- if .Values.autoscaling.enabled }}
 ---
 apiVersion: autoscaling/v2

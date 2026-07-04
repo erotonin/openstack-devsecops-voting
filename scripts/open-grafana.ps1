@@ -1,6 +1,6 @@
 #!/usr/bin/env pwsh
 param(
-    [string]$Context = "arn:aws:eks:us-east-1:800557027783:cluster/voting-app-cluster",
+    [string]$Context = "voting-k8s",
     [string]$Namespace = "monitoring",
     [string]$Service = "kube-prometheus-stack-grafana",
     [int]$LocalPort = 3000,

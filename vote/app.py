@@ -10,11 +10,49 @@ import json
 import logging
 import time
 
+try:
+    from opentelemetry import trace
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+    from opentelemetry.instrumentation.flask import FlaskInstrumentor
+    from opentelemetry.instrumentation.redis import RedisInstrumentor
+    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+except ImportError:
+    trace = None
+    OTLPSpanExporter = None
+    FlaskInstrumentor = None
+    RedisInstrumentor = None
+    Resource = None
+    TracerProvider = None
+    BatchSpanProcessor = None
+
 option_a = os.getenv('OPTION_A', "Cats")
 option_b = os.getenv('OPTION_B', "Dogs")
 hostname = socket.gethostname()
 
 app = Flask(__name__)
+
+def configure_tracing(flask_app):
+    endpoint = os.getenv('OTEL_EXPORTER_OTLP_ENDPOINT')
+    if not endpoint or not all([trace, OTLPSpanExporter, FlaskInstrumentor, Resource, TracerProvider, BatchSpanProcessor]):
+        return
+
+    resource = Resource.create({
+        'service.name': os.getenv('OTEL_SERVICE_NAME', 'vote'),
+    })
+    provider = TracerProvider(resource=resource)
+    exporter = OTLPSpanExporter(
+        endpoint=endpoint,
+        insecure=os.getenv('OTEL_EXPORTER_OTLP_INSECURE', 'true').lower() == 'true',
+    )
+    provider.add_span_processor(BatchSpanProcessor(exporter))
+    trace.set_tracer_provider(provider)
+    FlaskInstrumentor().instrument_app(flask_app)
+    if RedisInstrumentor:
+        RedisInstrumentor().instrument()
+
+configure_tracing(app)
 
 HTTP_REQUESTS = Counter(
     'voting_http_requests_total',
@@ -61,7 +99,7 @@ def record_request_metrics_and_headers(response):
     return response
 
 def csrf_token_for(voter_id):
-    secret = os.getenv('APP_SECRET') or os.getenv('REDIS_PASSWORD') or 'devsecops-voting-dev-secret'
+    secret = os.getenv('APP_SIGNING_KEY') or os.getenv('REDIS_PASSWORD') or 'devsecops-voting-dev-key'
     return hmac.new(secret.encode(), voter_id.encode(), hashlib.sha256).hexdigest()
 
 def get_redis():

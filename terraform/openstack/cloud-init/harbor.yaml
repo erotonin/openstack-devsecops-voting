@@ -1,0 +1,91 @@
+#cloud-config
+package_update: true
+package_upgrade: false
+
+packages:
+  - ca-certificates
+  - curl
+  - docker.io
+  - docker-compose-plugin
+  - e2fsprogs
+  - jq
+  - openssl
+  - python3
+  - tar
+
+write_files:
+  - path: /opt/harbor/install-harbor.sh
+    owner: root:root
+    permissions: "0750"
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      : "${HARBOR_HOSTNAME:?set HARBOR_HOSTNAME before running this script}"
+      : "${HARBOR_ADMIN_PASSWORD:?set HARBOR_ADMIN_PASSWORD before running this script}"
+
+      HARBOR_VERSION="${HARBOR_VERSION:-v2.11.1}"
+      INSTALL_DIR="/opt/harbor"
+      DATA_DIR="/data"
+      ARCHIVE="/tmp/harbor-online-installer.tgz"
+
+      mkdir -p "$INSTALL_DIR" "$DATA_DIR"
+      cd /tmp
+
+      curl -fsSL \
+        "https://github.com/goharbor/harbor/releases/download/${HARBOR_VERSION}/harbor-online-installer-${HARBOR_VERSION}.tgz" \
+        -o "$ARCHIVE"
+
+      tar xzf "$ARCHIVE" -C /opt
+      cd "$INSTALL_DIR"
+      cp harbor.yml.tmpl harbor.yml
+
+      python3 - <<'PY'
+      import os
+      from pathlib import Path
+
+      path = Path("/opt/harbor/harbor.yml")
+      text = path.read_text()
+      text = text.replace("hostname: reg.mydomain.com", f"hostname: {os.environ['HARBOR_HOSTNAME']}")
+      text = text.replace("harbor_admin_password: Harbor12345", f"harbor_admin_password: {os.environ['HARBOR_ADMIN_PASSWORD']}")
+      text = text.replace("data_volume: /data", "data_volume: /data")
+      text = text.replace("https:", "# https:")
+      text = text.replace("  port: 443", "  # port: 443")
+      text = text.replace("  certificate: /your/certificate/path", "  # certificate: /your/certificate/path")
+      text = text.replace("  private_key: /your/private/key/path", "  # private_key: /your/private/key/path")
+      path.write_text(text)
+      PY
+
+      ./install.sh
+
+  - path: /etc/motd
+    owner: root:root
+    permissions: "0644"
+    content: |
+      Harbor lab VM
+
+      The /data volume is mounted automatically when /dev/vdb is present.
+      Install Harbor manually after setting:
+
+        export HARBOR_HOSTNAME=harbor.openstack.local
+        export HARBOR_ADMIN_PASSWORD='<set outside git>'
+        sudo -E /opt/harbor/install-harbor.sh
+
+runcmd:
+  - systemctl enable --now docker
+  - mkdir -p /data
+  - |
+    set -eux
+    for i in $(seq 1 60); do
+      if [ -b /dev/vdb ]; then
+        break
+      fi
+      sleep 2
+    done
+    if [ -b /dev/vdb ]; then
+      if ! blkid /dev/vdb >/dev/null 2>&1; then
+        mkfs.ext4 -F /dev/vdb
+      fi
+      grep -q '^/dev/vdb /data ' /etc/fstab || echo '/dev/vdb /data ext4 defaults,nofail 0 2' >> /etc/fstab
+      mount /data
+    fi

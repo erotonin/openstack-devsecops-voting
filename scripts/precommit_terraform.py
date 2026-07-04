@@ -10,8 +10,7 @@ from pathlib import Path
 
 
 ENV_DIRS = [
-    Path("terraform/environments/aws"),
-    Path("terraform/environments/azure"),
+    Path("terraform/openstack"),
 ]
 
 

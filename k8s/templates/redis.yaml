@@ -24,12 +24,7 @@ spec:
         - containerPort: 6379
           name: redis
         resources:
-          requests:
-            cpu: 25m
-            memory: 64Mi
-          limits:
-            cpu: 100m
-            memory: 128Mi
+{{ toYaml .Values.resources.redis | indent 10 }}
         securityContext:
           runAsUser: 999
           runAsGroup: 999

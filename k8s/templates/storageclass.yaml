@@ -1,0 +1,9 @@
+{{- if .Values.storage.createStorageClass }}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ .Values.storage.className | quote }}
+provisioner: cinder.csi.openstack.org
+allowVolumeExpansion: true
+volumeBindingMode: WaitForFirstConsumer
+{{- end }}

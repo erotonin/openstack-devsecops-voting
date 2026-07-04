@@ -2,5 +2,10 @@ Flask
 Redis
 gunicorn
 prometheus_client
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-exporter-otlp-proto-grpc
+opentelemetry-instrumentation-flask
+opentelemetry-instrumentation-redis
 jaraco.context>=6.1.0
 wheel>=0.46.2
