@@ -23,7 +23,7 @@ config:
     batch: {}
   exporters:
     otlp/jaeger:
-      endpoint: jaeger-collector.observability.svc.cluster.local:4317
+      endpoint: jaeger.observability.svc.cluster.local:4317
       tls:
         insecure: true
   service:

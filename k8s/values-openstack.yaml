@@ -77,7 +77,7 @@ storage:
   size: 5Gi
 
 monitoring:
-  enabled: false
+  enabled: true
   prometheusRelease: kube-prometheus-stack
   slo:
     successRateTarget: 0.99
