@@ -20,7 +20,7 @@ singleBinary:
   replicas: 1
   persistence:
     enabled: true
-    size: 10Gi
+    size: 4Gi
     storageClass: cinder-csi
   resources:
     requests:

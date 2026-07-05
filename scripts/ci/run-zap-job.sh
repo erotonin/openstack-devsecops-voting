@@ -4,7 +4,7 @@ set -euo pipefail
 namespace="${NAMESPACE:-voting-staging}"
 manifest="${MANIFEST:-k8s/dast/zap-baseline-job.yaml}"
 job_name="${JOB_NAME:-zap-baseline}"
-timeout="${TIMEOUT:-10m}"
+timeout="${TIMEOUT:-5m}"
 
 kubectl get namespace "$namespace" >/dev/null
 kubectl -n "$namespace" delete job "$job_name" --ignore-not-found=true
