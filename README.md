@@ -184,7 +184,7 @@ Redis uses `emptyDir` because it is a demo queue/cache and can be recreated.
 
 The observability layer is split by signal:
 
-- Metrics: Prometheus and Grafana.
+- Metrics: Prometheus and Grafana (includes a custom dashboard **Voting App DevSecOps Runtime Overview** under UID `voting-devsecops-runtime-overview` auto-discovered from ConfigMaps).
 - Logs: Loki and Promtail.
 - Traces: OpenTelemetry Collector and Jaeger.
 

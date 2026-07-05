@@ -1,0 +1,184 @@
+apiVersion: v1
+data:
+  voting-devsecops-runtime-overview.json: "{\n  \"annotations\": {\n    \"list\":\
+    \ []\n  },\n  \"editable\": true,\n  \"fiscalYearStartMonth\": 0,\n  \"graphTooltip\"\
+    : 0,\n  \"id\": null,\n  \"links\": [],\n  \"liveNow\": false,\n  \"refresh\"\
+    : \"10s\",\n  \"schemaVersion\": 39,\n  \"tags\": [\n    \"devsecops\",\n    \"\
+    voting\",\n    \"openstack\",\n    \"kubernetes\"\n  ],\n  \"time\": {\n    \"\
+    from\": \"now-1h\",\n    \"to\": \"now\"\n  },\n  \"timepicker\": {},\n  \"timezone\"\
+    : \"browser\",\n  \"title\": \"Voting App DevSecOps Runtime Overview\",\n  \"\
+    description\": \"Polished runtime dashboard for the Voting App deployed on Kubernetes\
+    \ running on OpenStack private cloud. Monitors ArgoCD GitOps sync status, Harbor\
+    \ private registry image availability, OPA Gatekeeper policy compliance, and core\
+    \ Prometheus metrics, Loki logs, and Jaeger trace contexts.\",\n  \"uid\": \"\
+    voting-devsecops-runtime-overview\",\n  \"version\": 1,\n  \"weekStart\": \"\"\
+    ,\n  \"templating\": {\n    \"list\": [\n      {\n        \"current\": {\n   \
+    \       \"selected\": true,\n          \"text\": \"voting-prod\",\n          \"\
+    value\": \"voting-prod\"\n        },\n        \"hide\": 0,\n        \"includeAll\"\
+    : false,\n        \"label\": \"Namespace\",\n        \"multi\": false,\n     \
+    \   \"name\": \"namespace\",\n        \"options\": [\n          {\n          \
+    \  \"selected\": true,\n            \"text\": \"voting-prod\",\n            \"\
+    value\": \"voting-prod\"\n          },\n          {\n            \"selected\"\
+    : false,\n            \"text\": \"voting-staging\",\n            \"value\": \"\
+    voting-staging\"\n          }\n        ],\n        \"query\": \"voting-prod,voting-staging\"\
+    ,\n        \"type\": \"custom\"\n      }\n    ]\n  },\n  \"panels\": [\n    {\n\
+    \      \"collapsed\": false,\n      \"gridPos\": {\n        \"h\": 1,\n      \
+    \  \"w\": 24,\n        \"x\": 0,\n        \"y\": 0\n      },\n      \"id\": 100,\n\
+    \      \"title\": \"Overview\",\n      \"type\": \"row\"\n    },\n    {\n    \
+    \  \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\": \"prometheus\"\
+    \n      },\n      \"fieldConfig\": {\n        \"defaults\": {\n          \"decimals\"\
+    : 0,\n          \"mappings\": [],\n          \"thresholds\": {\n            \"\
+    mode\": \"absolute\",\n            \"steps\": [\n              {\n           \
+    \     \"color\": \"red\",\n                \"value\": null\n              },\n\
+    \              {\n                \"color\": \"green\",\n                \"value\"\
+    : 1\n              }\n            ]\n          },\n          \"unit\": \"short\"\
+    \n        },\n        \"overrides\": []\n      },\n      \"gridPos\": {\n    \
+    \    \"h\": 5,\n        \"w\": 8,\n        \"x\": 0,\n        \"y\": 1\n     \
+    \ },\n      \"id\": 1,\n      \"options\": {\n        \"colorMode\": \"value\"\
+    ,\n        \"graphMode\": \"none\",\n        \"justifyMode\": \"auto\",\n    \
+    \    \"orientation\": \"auto\",\n        \"reduceOptions\": {\n          \"calcs\"\
+    : [\n            \"lastNotNull\"\n          ],\n          \"fields\": \"\",\n\
+    \          \"values\": false\n        },\n        \"textMode\": \"auto\"\n   \
+    \   },\n      \"targets\": [\n        {\n          \"expr\": \"sum(kube_pod_status_ready{namespace=~\\\
+    \"$namespace\\\", condition=\\\"true\\\"})\",\n          \"legendFormat\": \"\
+    ready pods\",\n          \"refId\": \"A\"\n        }\n      ],\n      \"title\"\
+    : \"Pod Ready Summary\",\n      \"description\": \"Total number of application\
+    \ pods currently in Ready state.\",\n      \"type\": \"stat\"\n    },\n    {\n\
+    \      \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\":\
+    \ \"prometheus\"\n      },\n      \"fieldConfig\": {\n        \"defaults\": {\n\
+    \          \"decimals\": 0,\n          \"mappings\": [],\n          \"thresholds\"\
+    : {\n            \"mode\": \"absolute\",\n            \"steps\": [\n         \
+    \     {\n                \"color\": \"red\",\n                \"value\": null\n\
+    \              },\n              {\n                \"color\": \"green\",\n  \
+    \              \"value\": 5\n              }\n            ]\n          },\n  \
+    \        \"unit\": \"short\"\n        },\n        \"overrides\": []\n      },\n\
+    \      \"gridPos\": {\n        \"h\": 5,\n        \"w\": 8,\n        \"x\": 8,\n\
+    \        \"y\": 1\n      },\n      \"id\": 2,\n      \"options\": {\n        \"\
+    colorMode\": \"value\",\n        \"graphMode\": \"none\",\n        \"justifyMode\"\
+    : \"auto\",\n        \"orientation\": \"auto\",\n        \"reduceOptions\": {\n\
+    \          \"calcs\": [\n            \"lastNotNull\"\n          ],\n         \
+    \ \"fields\": \"\",\n          \"values\": false\n        },\n        \"textMode\"\
+    : \"auto\"\n      },\n      \"targets\": [\n        {\n          \"expr\": \"\
+    sum(kube_deployment_status_replicas_available{namespace=~\\\"$namespace\\\"})\"\
+    ,\n          \"legendFormat\": \"available deployments\",\n          \"refId\"\
+    : \"A\"\n        }\n      ],\n      \"title\": \"Available Deployments\",\n  \
+    \    \"description\": \"Total number of available (healthy) deployments in the\
+    \ namespace.\",\n      \"type\": \"stat\"\n    },\n    {\n      \"datasource\"\
+    : {\n        \"type\": \"prometheus\",\n        \"uid\": \"prometheus\"\n    \
+    \  },\n      \"fieldConfig\": {\n        \"defaults\": {\n          \"decimals\"\
+    : 0,\n          \"mappings\": [],\n          \"thresholds\": {\n            \"\
+    mode\": \"absolute\",\n            \"steps\": [\n              {\n           \
+    \     \"color\": \"red\",\n                \"value\": null\n              },\n\
+    \              {\n                \"color\": \"green\",\n                \"value\"\
+    : 1\n              }\n            ]\n          },\n          \"unit\": \"short\"\
+    \n        },\n        \"overrides\": []\n      },\n      \"gridPos\": {\n    \
+    \    \"h\": 5,\n        \"w\": 8,\n        \"x\": 16,\n        \"y\": 1\n    \
+    \  },\n      \"id\": 3,\n      \"options\": {\n        \"colorMode\": \"value\"\
+    ,\n        \"graphMode\": \"none\",\n        \"justifyMode\": \"auto\",\n    \
+    \    \"orientation\": \"auto\",\n        \"reduceOptions\": {\n          \"calcs\"\
+    : [\n            \"lastNotNull\"\n          ],\n          \"fields\": \"\",\n\
+    \          \"values\": false\n        },\n        \"textMode\": \"auto\"\n   \
+    \   },\n      \"targets\": [\n        {\n          \"expr\": \"sum(kube_pod_status_phase{namespace=~\\\
+    \"$namespace\\\", phase=\\\"Running\\\"})\",\n          \"legendFormat\": \"running\
+    \ pods\",\n          \"refId\": \"A\"\n        }\n      ],\n      \"title\": \"\
+    Total Running Pods\",\n      \"description\": \"Total number of pods in the Running\
+    \ phase.\",\n      \"type\": \"stat\"\n    },\n    {\n      \"collapsed\": false,\n\
+    \      \"gridPos\": {\n        \"h\": 1,\n        \"w\": 24,\n        \"x\": 0,\n\
+    \        \"y\": 6\n      },\n      \"id\": 200,\n      \"title\": \"Application\
+    \ Health\",\n      \"type\": \"row\"\n    },\n    {\n      \"datasource\": {\n\
+    \        \"type\": \"prometheus\",\n        \"uid\": \"prometheus\"\n      },\n\
+    \      \"gridPos\": {\n        \"h\": 6,\n        \"w\": 12,\n        \"x\": 0,\n\
+    \        \"y\": 7\n      },\n      \"id\": 4,\n      \"targets\": [\n        {\n\
+    \          \"expr\": \"up{namespace=~\\\"$namespace\\\"}\",\n          \"legendFormat\"\
+    : \"{{instance}}\",\n          \"refId\": \"A\"\n        }\n      ],\n      \"\
+    title\": \"Prometheus Scrape Health for Voting Namespace\",\n      \"description\"\
+    : \"Scrape status of targets configured under the voting namespace (1 = Up, 0\
+    \ = Down).\",\n      \"type\": \"table\"\n    },\n    {\n      \"datasource\"\
+    : {\n        \"type\": \"prometheus\",\n        \"uid\": \"prometheus\"\n    \
+    \  },\n      \"gridPos\": {\n        \"h\": 6,\n        \"w\": 12,\n        \"\
+    x\": 12,\n        \"y\": 7\n      },\n      \"id\": 5,\n      \"targets\": [\n\
+    \        {\n          \"expr\": \"kube_servicemonitor_info{namespace=~\\\"$namespace\\\
+    \"}\",\n          \"legendFormat\": \"{{servicemonitor}}\",\n          \"refId\"\
+    : \"A\"\n        }\n      ],\n      \"title\": \"ServiceMonitor Presence\",\n\
+    \      \"description\": \"Active Prometheus ServiceMonitor configurations discovered.\"\
+    ,\n      \"type\": \"table\"\n    },\n    {\n      \"collapsed\": false,\n   \
+    \   \"gridPos\": {\n        \"h\": 1,\n        \"w\": 24,\n        \"x\": 0,\n\
+    \        \"y\": 13\n      },\n      \"id\": 300,\n      \"title\": \"Resource\
+    \ Usage\",\n      \"type\": \"row\"\n    },\n    {\n      \"datasource\": {\n\
+    \        \"type\": \"prometheus\",\n        \"uid\": \"prometheus\"\n      },\n\
+    \      \"gridPos\": {\n        \"h\": 7,\n        \"w\": 12,\n        \"x\": 0,\n\
+    \        \"y\": 14\n      },\n      \"id\": 6,\n      \"targets\": [\n       \
+    \ {\n          \"expr\": \"sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=~\\\
+    \"$namespace\\\", container!=\\\"\\\", pod!=\\\"\\\"}[5m]))\",\n          \"legendFormat\"\
+    : \"{{pod}}\",\n          \"refId\": \"A\"\n        }\n      ],\n      \"title\"\
+    : \"CPU Usage by Pod\",\n      \"description\": \"CPU consumption rate (cores)\
+    \ per pod.\",\n      \"type\": \"timeseries\"\n    },\n    {\n      \"datasource\"\
+    : {\n        \"type\": \"prometheus\",\n        \"uid\": \"prometheus\"\n    \
+    \  },\n      \"fieldConfig\": {\n        \"defaults\": {\n          \"unit\":\
+    \ \"bytes\"\n        }\n      },\n      \"gridPos\": {\n        \"h\": 7,\n  \
+    \      \"w\": 12,\n        \"x\": 12,\n        \"y\": 14\n      },\n      \"id\"\
+    : 7,\n      \"targets\": [\n        {\n          \"expr\": \"sum by (pod) (container_memory_usage_bytes{namespace=~\\\
+    \"$namespace\\\", container!=\\\"\\\", pod!=\\\"\\\"})\",\n          \"legendFormat\"\
+    : \"{{pod}}\",\n          \"refId\": \"A\"\n        }\n      ],\n      \"title\"\
+    : \"Memory Usage by Pod\",\n      \"description\": \"Memory consumption (bytes)\
+    \ per pod.\",\n      \"type\": \"timeseries\"\n    },\n    {\n      \"collapsed\"\
+    : false,\n      \"gridPos\": {\n        \"h\": 1,\n        \"w\": 24,\n      \
+    \  \"x\": 0,\n        \"y\": 21\n      },\n      \"id\": 400,\n      \"title\"\
+    : \"Storage and Restarts\",\n      \"type\": \"row\"\n    },\n    {\n      \"\
+    datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\": \"prometheus\"\
+    \n      },\n      \"fieldConfig\": {\n        \"defaults\": {\n          \"decimals\"\
+    : 0,\n          \"mappings\": [\n            {\n              \"options\": {\n\
+    \                \"0\": {\n                  \"color\": \"red\",\n           \
+    \       \"index\": 0,\n                  \"text\": \"Unbound/Lost\"\n        \
+    \        },\n                \"1\": {\n                  \"color\": \"green\"\
+    ,\n                  \"index\": 1,\n                  \"text\": \"Bound\"\n  \
+    \              }\n              },\n              \"type\": \"value\"\n      \
+    \      }\n          ],\n          \"thresholds\": {\n            \"mode\": \"\
+    absolute\",\n            \"steps\": [\n              {\n                \"color\"\
+    : \"red\",\n                \"value\": null\n              },\n              {\n\
+    \                \"color\": \"green\",\n                \"value\": 1\n       \
+    \       }\n            ]\n          }\n        }\n      },\n      \"gridPos\"\
+    : {\n        \"h\": 5,\n        \"w\": 12,\n        \"x\": 0,\n        \"y\":\
+    \ 22\n      },\n      \"id\": 8,\n      \"options\": {\n        \"colorMode\"\
+    : \"value\",\n        \"graphMode\": \"none\",\n        \"justifyMode\": \"auto\"\
+    ,\n        \"reduceOptions\": {\n          \"calcs\": [\n            \"lastNotNull\"\
+    \n          ],\n          \"values\": false\n        }\n      },\n      \"targets\"\
+    : [\n        {\n          \"expr\": \"sum(kube_persistentvolumeclaim_status_phase{namespace=~\\\
+    \"$namespace\\\", phase=\\\"Bound\\\"})\",\n          \"legendFormat\": \"Bound\
+    \ PVCs\",\n          \"refId\": \"A\"\n        }\n      ],\n      \"title\": \"\
+    PostgreSQL PVC Bound Status\",\n      \"description\": \"Indicates whether the\
+    \ persistent volume claims in the namespace are successfully Bound.\",\n     \
+    \ \"type\": \"stat\"\n    },\n    {\n      \"datasource\": {\n        \"type\"\
+    : \"prometheus\",\n        \"uid\": \"prometheus\"\n      },\n      \"gridPos\"\
+    : {\n        \"h\": 5,\n        \"w\": 12,\n        \"x\": 12,\n        \"y\"\
+    : 22\n      },\n      \"id\": 9,\n      \"targets\": [\n        {\n          \"\
+    expr\": \"sum by (pod) (kube_pod_container_status_restarts_total{namespace=~\\\
+    \"$namespace\\\"})\",\n          \"legendFormat\": \"{{pod}}\",\n          \"\
+    refId\": \"A\"\n        }\n      ],\n      \"title\": \"Container Restart Count\"\
+    ,\n      \"description\": \"Total number of container restarts per pod.\",\n \
+    \     \"type\": \"table\"\n    },\n    {\n      \"collapsed\": false,\n      \"\
+    gridPos\": {\n        \"h\": 1,\n        \"w\": 24,\n        \"x\": 0,\n     \
+    \   \"y\": 27\n      },\n      \"id\": 500,\n      \"title\": \"Observability\
+    \ and Policy\",\n      \"type\": \"row\"\n    },\n    {\n      \"datasource\"\
+    : {\n        \"type\": \"prometheus\",\n        \"uid\": \"prometheus\"\n    \
+    \  },\n      \"gridPos\": {\n        \"h\": 6,\n        \"w\": 12,\n        \"\
+    x\": 0,\n        \"y\": 28\n      },\n      \"id\": 10,\n      \"targets\": [\n\
+    \        {\n          \"expr\": \"kube_deployment_status_replicas_available{namespace=~\\\
+    \"$namespace\\\"}\",\n          \"legendFormat\": \"{{deployment}} available\"\
+    ,\n          \"refId\": \"A\"\n        }\n      ],\n      \"title\": \"Deployment\
+    \ Availability Table\",\n      \"description\": \"Lists the available replica\
+    \ count for each deployment in the namespace.\",\n      \"type\": \"table\"\n\
+    \    },\n    {\n      \"datasource\": {\n        \"type\": \"prometheus\",\n \
+    \       \"uid\": \"prometheus\"\n      },\n      \"gridPos\": {\n        \"h\"\
+    : 6,\n        \"w\": 12,\n        \"x\": 12,\n        \"y\": 28\n      },\n  \
+    \    \"id\": 11,\n      \"targets\": [\n        {\n          \"expr\": \"kube_pod_info{namespace=~\\\
+    \"$namespace\\\"}\",\n          \"legendFormat\": \"{{pod}} node={{node}}\",\n\
+    \          \"refId\": \"A\"\n        }\n      ],\n      \"title\": \"Pod Inventory\
+    \ Table\",\n      \"description\": \"Detailed inventory of pods showing host IPs,\
+    \ pod IPs, and the assigned node.\",\n      \"type\": \"table\"\n    }\n  ]\n}"
+kind: ConfigMap
+metadata:
+  labels:
+    grafana_dashboard: '1'
+  name: voting-app-devsecops-runtime-overview
+  namespace: observability
