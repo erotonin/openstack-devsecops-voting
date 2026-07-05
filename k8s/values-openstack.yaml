@@ -86,7 +86,7 @@ monitoring:
 
 otel:
   enabled: true
-  endpoint: http://otel-collector:4317
+  endpoint: http://otel-collector-opentelemetry-collector.observability.svc.cluster.local:4317
   insecure: "true"
 
 kyverno:
