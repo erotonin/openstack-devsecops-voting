@@ -74,9 +74,6 @@ jobs:
       HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
       IMAGE_TAG: ${{ github.sha }}
     outputs:
-      vote_ref: ${{ steps.images.outputs.vote_ref }}
-      result_ref: ${{ steps.images.outputs.result_ref }}
-      worker_ref: ${{ steps.images.outputs.worker_ref }}
       vote_digest: ${{ steps.images.outputs.vote_digest }}
       result_digest: ${{ steps.images.outputs.result_digest }}
       worker_digest: ${{ steps.images.outputs.worker_digest }}
@@ -158,12 +155,13 @@ jobs:
     runs-on: [self-hosted, linux, openstack]
     needs: build-and-sign
     env:
+      HARBOR_REGISTRY: ${{ secrets.HARBOR_REGISTRY }}
       TRIVY_INSECURE: "true"
     steps:
       - name: Trivy scan vote image
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ needs.build-and-sign.outputs.vote_ref }}
+          image-ref: ${{ secrets.HARBOR_REGISTRY }}/voting/vote@${{ needs.build-and-sign.outputs.vote_digest }}
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: "1"
@@ -171,7 +169,7 @@ jobs:
       - name: Trivy scan result image
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ needs.build-and-sign.outputs.result_ref }}
+          image-ref: ${{ secrets.HARBOR_REGISTRY }}/voting/result@${{ needs.build-and-sign.outputs.result_digest }}
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: "1"
@@ -179,7 +177,7 @@ jobs:
       - name: Trivy scan worker image
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ needs.build-and-sign.outputs.worker_ref }}
+          image-ref: ${{ secrets.HARBOR_REGISTRY }}/voting/worker@${{ needs.build-and-sign.outputs.worker_digest }}
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: "1"
