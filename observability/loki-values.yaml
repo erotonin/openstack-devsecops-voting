@@ -20,7 +20,7 @@ singleBinary:
   replicas: 1
   persistence:
     enabled: true
-    size: 10Gi
+    size: 4Gi
     storageClass: cinder-csi
   resources:
     requests:
@@ -29,3 +29,34 @@ singleBinary:
     limits:
       cpu: 500m
       memory: 1Gi
+
+write:
+  replicas: 0
+read:
+  replicas: 0
+backend:
+  replicas: 0
+
+resultsCache:
+  enabled: false
+chunksCache:
+  enabled: false
+
+lokiCanary:
+  enabled: false
+
+test:
+  enabled: false
+
+gateway:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+sidecar:
+  skipTlsVerify: true
