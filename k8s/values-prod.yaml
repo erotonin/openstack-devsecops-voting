@@ -2,14 +2,14 @@ environment: prod
 
 images:
   vote:
-    tag: 666aef9b1c027bc91598586fb163c94bc45ebcd5
-    digest: sha256:ef4fe094163093e0a078e4b409b0bd6699a56ed40e47f9e88d3ce71b07660509
+    tag: 91ec706acd26500de3ed536db25d6acf12daab51
+    digest: sha256:b9d360f1dc010cd43be807627cc2f387bfae3e95ab5c97155d615f17a91d0109
   result:
-    tag: 666aef9b1c027bc91598586fb163c94bc45ebcd5
-    digest: sha256:6032113a13ff5df13784df12131f975558a18753efe2158556ccbd27efb5ba16
+    tag: 91ec706acd26500de3ed536db25d6acf12daab51
+    digest: sha256:e3b8aedb0d46fb2faf645dc8594e9fac37b0da8c598019c04cce70e7c4a5e9a6
   worker:
-    tag: 666aef9b1c027bc91598586fb163c94bc45ebcd5
-    digest: sha256:8115e69d4b850691a07cd146740d6743da869913acdfb6f1d9c45c2f72ac8bbe
+    tag: 91ec706acd26500de3ed536db25d6acf12daab51
+    digest: sha256:096f326bfc50e6f6e5ffa90d27c49af406ef195ea2195f13801d347b1445748f
 
 ingress:
   hosts:
