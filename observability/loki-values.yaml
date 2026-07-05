@@ -57,3 +57,6 @@ gateway:
     limits:
       cpu: 200m
       memory: 128Mi
+
+sidecar:
+  skipTlsVerify: true

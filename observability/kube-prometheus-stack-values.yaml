@@ -11,6 +11,8 @@ grafana:
       memory: 512Mi
   persistence:
     enabled: false
+  sidecar:
+    skipTlsVerify: true
 
 prometheus:
   prometheusSpec:
