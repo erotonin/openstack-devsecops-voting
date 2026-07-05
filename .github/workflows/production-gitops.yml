@@ -9,9 +9,9 @@ permissions:
   contents: read
 
 jobs:
-  production-sync:
-    name: Validate and sync production
-    runs-on: [self-hosted, linux, openstack]
+  validate:
+    name: Validate production manifests
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout main
         uses: actions/checkout@v4
@@ -19,25 +19,48 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Validate production manifests
-        shell: bash
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.12.0
+
+      - name: Helm lint
+        run: helm lint k8s
+
+      - name: Render Helm template
         run: |
-          set -euo pipefail
-          helm lint k8s
           helm template voting-prod k8s \
             -f k8s/values-openstack.yaml \
             -f k8s/values-prod.yaml > /tmp/voting-prod.yaml
-          if command -v conftest >/dev/null 2>&1 && find policies/conftest -type f | grep -q .; then
+
+      - name: Install Conftest
+        run: |
+          curl -L -sSf https://github.com/open-policy-agent/conftest/releases/download/v0.52.0/conftest_0.52.0_Linux_x86_64.tar.gz | tar xz
+          sudo mv conftest /usr/local/bin/
+
+      - name: Conftest verification
+        run: |
+          if [ -d policies/conftest ]; then
             conftest test --policy policies/conftest /tmp/voting-prod.yaml
           fi
 
       - name: Verify production values pin digests
-        shell: bash
         run: |
           set -euo pipefail
           python scripts/ci/verify-values-digests.py \
             --base k8s/values-openstack.yaml \
             --values k8s/values-prod.yaml
+
+  deploy:
+    name: Sync and deploy production
+    runs-on: [self-hosted, linux, openstack]
+    needs: validate
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
 
       - name: Ensure ArgoCD production app exists
         shell: bash

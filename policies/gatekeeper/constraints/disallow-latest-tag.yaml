@@ -3,9 +3,11 @@ kind: K8sDisallowLatestTag
 metadata:
   name: voting-disallow-latest-tag
 spec:
+  enforcementAction: deny
   match:
     kinds:
       - apiGroups: ["apps"]
         kinds: ["Deployment"]
     namespaces:
-      - voting
+      - voting-staging
+      - voting-prod

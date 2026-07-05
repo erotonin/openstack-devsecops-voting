@@ -12,17 +12,11 @@ permissions:
   pull-requests: read
 
 jobs:
-  promotion-gate:
-    name: Promotion gate
-    runs-on: [self-hosted, linux, openstack]
-    env:
-      HARBOR_REGISTRY: ${{ secrets.HARBOR_REGISTRY }}
-      HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
-      HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
-      TRIVY_INSECURE: "true"
+  validate:
+    name: Validate PR manifests and code security
+    runs-on: ubuntu-latest
     steps:
       - name: Verify source branch
-        shell: bash
         env:
           HEAD_REF: ${{ github.head_ref }}
         run: |
@@ -67,21 +61,28 @@ jobs:
           skip_check: CKV_GHA_7
           soft_fail: false
 
-      - name: tfsec Terraform scan
-        shell: bash
+      - name: Install tfsec
         run: |
           set -euo pipefail
-          if ! command -v tfsec >/dev/null 2>&1; then
-            mkdir -p "$RUNNER_TEMP/bin"
-            curl -sSfL https://github.com/aquasecurity/tfsec/releases/download/v1.28.14/tfsec-linux-amd64 -o "$RUNNER_TEMP/bin/tfsec"
-            chmod +x "$RUNNER_TEMP/bin/tfsec"
-            echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
-            export PATH="$RUNNER_TEMP/bin:$PATH"
-          fi
-          tfsec --exclude openstack-networking-no-public-ingress terraform/openstack
+          mkdir -p "$RUNNER_TEMP/bin"
+          curl -sSfL https://github.com/aquasecurity/tfsec/releases/download/v1.28.14/tfsec-linux-amd64 -o "$RUNNER_TEMP/bin/tfsec"
+          chmod +x "$RUNNER_TEMP/bin/tfsec"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: tfsec Terraform scan
+        run: tfsec --exclude openstack-networking-no-public-ingress terraform/openstack
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.12.0
 
       - name: Terraform and Helm validation
-        shell: bash
         run: |
           set -euo pipefail
           terraform -chdir=terraform/openstack init -backend=false
@@ -91,9 +92,33 @@ jobs:
           helm template voting-prod k8s \
             -f k8s/values-openstack.yaml \
             -f k8s/values-prod.yaml > /tmp/voting-prod.yaml
-          if command -v conftest >/dev/null 2>&1 && find policies/conftest -type f | grep -q .; then
+
+      - name: Install Conftest
+        run: |
+          curl -L -sSf https://github.com/open-policy-agent/conftest/releases/download/v0.52.0/conftest_0.52.0_Linux_x86_64.tar.gz | tar xz
+          sudo mv conftest /usr/local/bin/
+
+      - name: Conftest verification
+        run: |
+          if [ -d policies/conftest ]; then
             conftest test --policy policies/conftest /tmp/voting-prod.yaml
           fi
+
+  verify-and-promote:
+    name: Verify signatures and promote digests
+    runs-on: [self-hosted, linux, openstack]
+    needs: validate
+    env:
+      HARBOR_REGISTRY: ${{ secrets.HARBOR_REGISTRY }}
+      HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
+      HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
+      TRIVY_INSECURE: "true"
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
 
       - name: Read staging image digests
         id: images

@@ -1,0 +1,23 @@
+replicas: 1
+
+auditInterval: 300
+validatingWebhookTimeoutSeconds: 3
+mutatingWebhookTimeoutSeconds: 3
+
+controllerManager:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+audit:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
