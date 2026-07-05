@@ -16,8 +16,8 @@ grafana:
 
 prometheus:
   prometheusSpec:
-    retention: 6h
-    retentionSize: 4GB
+    retention: 2h
+    retentionSize: 1GB
     serviceMonitorSelectorNilUsesHelmValues: false
     ruleSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
@@ -39,7 +39,7 @@ prometheus:
             - ReadWriteOnce
           resources:
             requests:
-              storage: 8Gi
+              storage: 4Gi
 
 alertmanager:
   alertmanagerSpec:

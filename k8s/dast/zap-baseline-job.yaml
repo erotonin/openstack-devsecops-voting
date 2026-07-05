@@ -7,7 +7,7 @@ metadata:
     app: zap-baseline
 spec:
   backoffLimit: 0
-  activeDeadlineSeconds: 600
+  activeDeadlineSeconds: 300
   ttlSecondsAfterFinished: 300
   template:
     metadata:
@@ -30,8 +30,8 @@ spec:
           zap-baseline.py -t "${ZAP_TARGET:-http://vote:80}" -I -r /zap/wrk/zap-report.html
         resources:
           requests:
-            cpu: 250m
-            memory: 512Mi
+            cpu: 100m
+            memory: 384Mi
           limits:
             cpu: "1"
             memory: 1Gi
