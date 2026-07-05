@@ -3,9 +3,11 @@ kind: K8sRequiredContainerSecurity
 metadata:
   name: voting-required-container-security
 spec:
+  enforcementAction: deny
   match:
     kinds:
       - apiGroups: ["apps"]
         kinds: ["Deployment"]
     namespaces:
-      - voting
+      - voting-staging
+      - voting-prod

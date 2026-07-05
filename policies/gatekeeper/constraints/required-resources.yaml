@@ -3,9 +3,11 @@ kind: K8sRequiredResources
 metadata:
   name: voting-required-resources
 spec:
+  enforcementAction: deny
   match:
     kinds:
       - apiGroups: ["apps"]
         kinds: ["Deployment"]
     namespaces:
-      - voting
+      - voting-staging
+      - voting-prod

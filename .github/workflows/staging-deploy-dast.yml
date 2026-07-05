@@ -16,16 +16,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  staging-deploy:
-    name: Build, deploy staging, and run DAST
-    runs-on: [self-hosted, linux, openstack]
-    if: github.actor != 'github-actions[bot]' && github.event.created != true
-    env:
-      HARBOR_REGISTRY: ${{ secrets.HARBOR_REGISTRY }}
-      HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
-      HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
-      IMAGE_TAG: ${{ github.sha }}
-      TRIVY_INSECURE: "true"
+  validate:
+    name: Validate staging manifests
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout staging
         uses: actions/checkout@v4
@@ -33,20 +26,66 @@ jobs:
           ref: staging
           fetch-depth: 0
 
-      - name: Validate staging manifests
-        shell: bash
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.7
+
+      - name: Terraform validation
         run: |
           set -euo pipefail
           terraform -chdir=terraform/openstack init -backend=false
           terraform -chdir=terraform/openstack fmt -check
           terraform -chdir=terraform/openstack validate
-          helm lint k8s
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.12.0
+
+      - name: Helm lint
+        run: helm lint k8s
+
+      - name: Render Helm template
+        run: |
           helm template voting-staging k8s \
             -f k8s/values-openstack.yaml \
             -f k8s/values-staging.yaml > /tmp/voting-staging.yaml
-          if command -v conftest >/dev/null 2>&1 && find policies/conftest -type f | grep -q .; then
+
+      - name: Install Conftest
+        run: |
+          curl -L -sSf https://github.com/open-policy-agent/conftest/releases/download/v0.52.0/conftest_0.52.0_Linux_x86_64.tar.gz | tar xz
+          sudo mv conftest /usr/local/bin/
+
+      - name: Conftest verification
+        run: |
+          if [ -d policies/conftest ]; then
             conftest test --policy policies/conftest /tmp/voting-staging.yaml
           fi
+
+  build-and-sign:
+    name: Build, SBOM, and sign images
+    runs-on: [self-hosted, linux, openstack]
+    needs: validate
+    if: github.actor != 'github-actions[bot]' && github.event.created != true
+    env:
+      HARBOR_REGISTRY: ${{ secrets.HARBOR_REGISTRY }}
+      HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
+      HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
+      IMAGE_TAG: ${{ github.sha }}
+    outputs:
+      vote_ref: ${{ steps.images.outputs.vote_ref }}
+      result_ref: ${{ steps.images.outputs.result_ref }}
+      worker_ref: ${{ steps.images.outputs.worker_ref }}
+      vote_digest: ${{ steps.images.outputs.vote_digest }}
+      result_digest: ${{ steps.images.outputs.result_digest }}
+      worker_digest: ${{ steps.images.outputs.worker_digest }}
+    steps:
+      - name: Checkout staging
+        uses: actions/checkout@v4
+        with:
+          ref: staging
+          fetch-depth: 0
 
       - name: Login to Harbor
         shell: bash
@@ -79,7 +118,7 @@ jobs:
           for service in vote result worker; do
             image="$HARBOR_REGISTRY/voting/${service}:${IMAGE_TAG}"
             docker build --network=host -t "$image" "./${service}"
-            syft "$image" -o "spdx-json=sbom-${service}.spdx.json"
+            syft "$image" -o "sbom-${service}.spdx.json"
             docker push "$image"
             digest="$(docker inspect --format='{{index .RepoDigests 0}}' "$image" | cut -d'@' -f2)"
             test -n "$digest"
@@ -114,10 +153,17 @@ jobs:
           bash scripts/verify-cosign-signature-policy.sh "${{ steps.images.outputs.result_ref }}" "$SIGNATURE_IDENTITY"
           bash scripts/verify-cosign-signature-policy.sh "${{ steps.images.outputs.worker_ref }}" "$SIGNATURE_IDENTITY"
 
+  trivy-scan:
+    name: Trivy Security Scan
+    runs-on: [self-hosted, linux, openstack]
+    needs: build-and-sign
+    env:
+      TRIVY_INSECURE: "true"
+    steps:
       - name: Trivy scan vote image
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ steps.images.outputs.vote_ref }}
+          image-ref: ${{ needs.build-and-sign.outputs.vote_ref }}
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: "1"
@@ -125,7 +171,7 @@ jobs:
       - name: Trivy scan result image
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ steps.images.outputs.result_ref }}
+          image-ref: ${{ needs.build-and-sign.outputs.result_ref }}
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: "1"
@@ -133,10 +179,23 @@ jobs:
       - name: Trivy scan worker image
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ steps.images.outputs.worker_ref }}
+          image-ref: ${{ needs.build-and-sign.outputs.worker_ref }}
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: "1"
+
+  deploy-and-dast:
+    name: Deploy Staging and Run DAST
+    runs-on: [self-hosted, linux, openstack]
+    needs: [build-and-sign, trivy-scan]
+    env:
+      IMAGE_TAG: ${{ github.sha }}
+    steps:
+      - name: Checkout staging
+        uses: actions/checkout@v4
+        with:
+          ref: staging
+          fetch-depth: 0
 
       - name: Update staging desired state
         shell: bash
@@ -145,9 +204,9 @@ jobs:
           python scripts/ci/update-values-image-digests.py \
             --values k8s/values-staging.yaml \
             --tag "$IMAGE_TAG" \
-            --vote-digest "${{ steps.images.outputs.vote_digest }}" \
-            --result-digest "${{ steps.images.outputs.result_digest }}" \
-            --worker-digest "${{ steps.images.outputs.worker_digest }}"
+            --vote-digest "${{ needs.build-and-sign.outputs.vote_digest }}" \
+            --result-digest "${{ needs.build-and-sign.outputs.result_digest }}" \
+            --worker-digest "${{ needs.build-and-sign.outputs.worker_digest }}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add k8s/values-staging.yaml
