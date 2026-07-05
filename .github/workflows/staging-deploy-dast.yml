@@ -118,7 +118,7 @@ jobs:
           for service in vote result worker; do
             image="$HARBOR_REGISTRY/voting/${service}:${IMAGE_TAG}"
             docker build --network=host -t "$image" "./${service}"
-            syft "$image" -o "sbom-${service}.spdx.json"
+            syft "$image" -o "spdx-json=sbom-${service}.spdx.json"
             docker push "$image"
             digest="$(docker inspect --format='{{index .RepoDigests 0}}' "$image" | cut -d'@' -f2)"
             test -n "$digest"
