@@ -7,5 +7,5 @@ opentelemetry-sdk
 opentelemetry-exporter-otlp-proto-grpc
 opentelemetry-instrumentation-flask
 opentelemetry-instrumentation-redis
-jaraco.context>=6.1.0
+jaraco.context>=6.1.2
 wheel>=0.46.2
