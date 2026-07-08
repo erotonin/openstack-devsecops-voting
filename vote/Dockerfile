@@ -1,11 +1,11 @@
 # ===== Stage 1: Build dependencies =====
-FROM python:3.11-slim AS build
+FROM python:3.14-slim AS build
 WORKDIR /install
 COPY requirements.txt .
 RUN pip install --no-cache-dir --prefix=/install/deps -r requirements.txt
 
 # ===== Stage 2: Production image (Hardened Slim) =====
-FROM python:3.11-slim
+FROM python:3.14-slim
 RUN apt-get update && apt-get upgrade -y && \
     rm -rf /var/lib/apt/lists/* && \
     # Remove package managers & shells to reduce attack surface
